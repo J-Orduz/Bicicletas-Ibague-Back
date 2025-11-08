@@ -1,3 +1,56 @@
-// Servidor principal de BiciIbagué
-// Punto de entrada de la aplicación - Coordina todas las rutas y servicios
-// Responsable: Recepción de peticiones HTTP y enrutamiento
+// SERVIDOR PRINCIPAL - CONFIGURACIÓN GENERAL
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+
+// Cargar variables de entorno
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ==================== ✅ CONFIGURACIÓN GENERAL ====================
+
+// 1. Middlewares globales
+app.use(cors()); 
+app.use(express.json()); // Convierte JSON automáticamente
+app.use(express.urlencoded({ extended: true })); //Decodifica formularios
+
+// 2. Rutas de sistema (no de negocio)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: '✅ OK', 
+    service: 'BiciIbagué API',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 3. Inicialización de servicios globales
+import { eventBus } from './event-bus/index.js';
+
+const initializeGlobalServices = () => {
+  console.log('🚀 Inicializando Event-Bus y servicios...');
+  // Los servicios se auto-registran al importarlos
+  import('./services/notification/index.js');
+  import('./services/etl/index.js');
+};
+
+// 4. Manejo global de errores
+app.use((error, req, res, next) => {
+  console.error('❌ Error global:', error);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
+
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
+// ==================== 🚀 INICIAR SERVIDOR ====================
+
+app.listen(PORT, () => {
+  console.log(`🎯 Servidor BiciIbagué ejecutándose en: http://localhost:${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  
+  // Inicializar servicios después de que el servidor esté listo
+  initializeGlobalServices();
+});
