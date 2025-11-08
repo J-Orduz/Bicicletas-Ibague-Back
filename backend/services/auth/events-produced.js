@@ -1,0 +1,1 @@
+// Eventos que publica este servicio (UsuarioRegistrado, etc.)

@@ -1,0 +1,1 @@
+// Eventos que publica (PagoConfirmado, FacturaGenerada)

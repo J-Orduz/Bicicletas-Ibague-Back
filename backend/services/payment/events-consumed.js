@@ -1,0 +1,1 @@
+// Eventos que consume (ViajeFinalizado)
