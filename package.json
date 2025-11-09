@@ -1,0 +1,28 @@
+{
+  "name": "bicicletas-ibague-back",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/J-Orduz/Bicicletas-Ibague-Back.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/J-Orduz/Bicicletas-Ibague-Back/issues"
+  },
+  "homepage": "https://github.com/J-Orduz/Bicicletas-Ibague-Back#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0",
+    "@upstash/redis": "^1.35.6",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  }
+}
