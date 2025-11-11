@@ -1,3 +1,22 @@
-// Controlador para operaciones de bicicletas y estaciones
-// Funciones: getAvailableBikes, getNearbyStations, getBikeStatus
-// Responsable: Orquestar la lógica de negocio para bicicletas
+import { bicicletaService } from "../services/index.js";
+
+export const getBicicletas = async (req, res) => {
+  const data = await bicicletaService.listarBicicletas();
+  res.json(data);
+};
+
+
+export const getBicicletasPorTipo = async (req, res) => {
+  const data = await bicicletaService.listarPorTipo(req.params.tipo);
+  res.json(data);
+};
+
+export const getTelemetriaActual = async (req, res) => {
+  const data = await bicicletaService.obtenerTelemetriaActual(req.params.id);
+  res.json(data);
+};
+
+export const getTelemetriaHistorico = async (req, res) => {
+  const data = await bicicletaService.obtenerTelemetriaHistorico(req.params.id);
+  res.json(data);
+};

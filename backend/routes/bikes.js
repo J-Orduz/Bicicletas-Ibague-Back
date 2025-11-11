@@ -1,3 +1,11 @@
-// Rutas para gestión de bicicletas y estaciones
-// Endpoints: /api/bikes/available, /api/bikes/nearby, /api/stations/
-// Responsable: Definir las URLs para operaciones de bicicletas
+import { Router } from "express";
+import * as bicicletaController from "../controllers/bikeController.js";
+
+const router = Router();
+
+router.get("/", bicicletaController.getBicicletas);
+router.get("/tipo/:tipo", bicicletaController.getBicicletasPorTipo);
+router.get("/:id/telemetria", bicicletaController.getTelemetriaActual);
+router.get("/:id/telemetria/historico", bicicletaController.getTelemetriaHistorico);
+
+export default router;

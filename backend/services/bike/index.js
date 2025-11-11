@@ -1,1 +1,1 @@
-// Punto de entrada del servicio
+export * as bicicletaService from "./bicicleta.service.js";
