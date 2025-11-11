@@ -17,7 +17,7 @@ export class AuthService {
             nombre: userData.nombre,
             fecha_registro: new Date().toISOString()
           },
-          emailRedirectTo: 'http://localhost:5173/auth/callback'
+          emailRedirectTo: 'http://localhost:5173'
         }
       });
 
