@@ -6,8 +6,7 @@ export const listarBicicletas = async () => {
     .from("Bicicleta")
     .select("*");
 
-  console.log("ERROR:", error);
-  console.log("DATA:", data);
+  
 
   if (error) throw error;
   return data;
