@@ -39,10 +39,11 @@ import { eventBus } from './event-bus/index.js';
 
 // Importar rutas
 import userRoutes from './routes/users.js';
+import bicicletaRoutes from './routes/bikes.js';
 
 // Usar rutas
 app.use('/api/users', userRoutes);
-
+app.use('/bicicletas', bicicletaRoutes);
 
 // 4. Manejo global de errores
 app.use((error, req, res, next) => {
