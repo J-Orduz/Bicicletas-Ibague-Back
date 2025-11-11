@@ -1,4 +1,4 @@
-import { bicicletaService } from "../services/index.js";
+import { bicicletaService } from "../services/bike/bike.services.js";
 
 export const getBicicletas = async (req, res) => {
   const data = await bicicletaService.listarBicicletas();

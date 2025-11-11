@@ -1,4 +1,4 @@
-import { supabase } from "../shared/supabaseClient.js";
+import { supabase } from "../shared/supabase/client.js";
 
 
 export const listarBicicletas = async () => {
