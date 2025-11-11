@@ -1,19 +1,18 @@
-import { supabase } from "../shared/supabase/client.js";
+import { supabase } from "../../shared/supabase/client.js";
 
 
 
-export const listarEstaciones = async () => {
-    let { data: Estacion, error } = await supabase
+const listarEstaciones = async () => {
+    let { data, error } = await supabase
         .from('Estacion')
         .select('*')
-    console.log("ERROR:", error);
-    console.log("DATA:", data);
+
     if (error) throw error;
     return data;
 }
 
 
-export const listarBicicletasPorEstacion = async (idEstacion) => {
+const listarBicicletasPorEstacion = async (idEstacion) => {
     const { data, error } = await supabase
         .from("Bicicleta")
         .select("*")
@@ -26,6 +25,11 @@ export const listarBicicletasPorEstacion = async (idEstacion) => {
 };
 
 
+
+export const bicicletaService = {
+    listarEstaciones,
+    listarBicicletasPorEstacion,
+};
 
 
 /*export const obtenerTelemetriaActual = async (idBici) => {

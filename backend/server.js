@@ -12,7 +12,8 @@ const PORT = process.env.PORT || 3000;
 // ==================== ✅ CONFIGURACIÓN GENERAL ====================
 
 // 1. Middlewares globales
-app.use(cors()); 
+app.use(cors()); // Permite todos los orígenes en desarrollo
+
 app.use(express.json()); // Convierte JSON automáticamente
 app.use(express.urlencoded({ extended: true })); //Decodifica formularios
 
@@ -28,12 +29,21 @@ app.get('/health', (req, res) => {
 // 3. Inicialización de servicios globales
 import { eventBus } from './event-bus/index.js';
 
-const initializeGlobalServices = () => {
+/*const initializeGlobalServices = () => {
   console.log('🚀 Inicializando Event-Bus y servicios...');
   // Los servicios se auto-registran al importarlos
   import('./services/notification/index.js');
   import('./services/etl/index.js');
-};
+};*/
+
+
+// Importar rutas
+
+import bicicletaRoutes from './routes/bikes.js';
+// Usar rutas
+
+
+app.use('/bicicletas', bicicletaRoutes);
 
 // 4. Manejo global de errores
 app.use((error, req, res, next) => {
@@ -52,5 +62,5 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   
   // Inicializar servicios después de que el servidor esté listo
-  initializeGlobalServices();
+  //initializeGlobalServices();
 });
