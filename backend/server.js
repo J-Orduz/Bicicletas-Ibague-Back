@@ -63,34 +63,3 @@ app.listen(PORT, () => {
   // Inicializar servicios después de que el servidor esté listo
   //initializeGlobalServices();
 });
-
-
-
-// ==================== Conectarse  ====================
-/* CONEXIÓN AL BACKEND - REGISTRO DE USUARIOS:
-
-URL: http://localhost:3000/api/users/register
-Método: POST
-Content-Type: application/json
-
-DATOS REQUERIDOS:
-{
-  "email": "usuario@ejemplo.com",
-  "nombre": "Nombre Completo"
-}
-
-✅RESPUESTA EXITOSA:
-{
-  "success": true,
-  "message": "Se ha enviado un magic link a tu correo para verificación.",
-  "user": {
-    "email": "usuario@ejemplo.com",
-    "nombre": "Nombre Completo"
-  }
-}
-
-❌ RESPUESTA DE ERROR:
-{
-  "success": false,
-  "message": "Descripción del error"
-}*/
