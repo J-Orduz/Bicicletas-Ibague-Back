@@ -1,3 +1,12 @@
-// Rutas para gestión de usuarios
-// Endpoints: /api/users/register, /api/users/login, /api/users/profile
-// Responsable: Definir las URLs para operaciones de usuarios
+import express from 'express';
+import { registerUser, loginUser, getUserProfile, updateUserProfile } from '../controllers/userController.js';
+
+const router = express.Router();
+
+// Ruta para registro de usuarios
+router.post('/register', registerUser);
+
+// Ruta para Login de usuarios
+router.post('/login', loginUser);
+
+export default router;
