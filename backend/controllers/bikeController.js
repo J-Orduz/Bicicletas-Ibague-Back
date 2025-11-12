@@ -1,5 +1,6 @@
 import { bicicletaService } from "../services/bike/bike.services.js";
 import { bikeHandler } from "../services/bike/bike-handler.js";
+import { supabase } from "../shared/supabase/client.js";
 
 export const getEstaciones = async (req, res) => {
   const data = await bicicletaService.listarEstaciones();
@@ -12,18 +13,58 @@ export const getBicicletasPorEstacion = async (req, res) => {
   res.json(data);
 };
 
+
+// Middleware para extraer usuario del token
+const extractUserFromToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token de autorización requerido'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    // Verificar el token con Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido o expirado'
+      });
+    }
+
+    // Agregar usuario a la request
+    req.user = user;
+    next();
+    
+  } catch (error) {
+    console.error('❌ Error extrayendo usuario del token:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Error de autenticación'
+    });
+  }
+};
+
+
 // Endpoint para iniciar viaje con número de serie
 export const iniciarViajeConSerial = async (req, res) => {
   try {
-    const { serialNumber, usuarioId } = req.body;
+    const { serialNumber } = req.body;
+    const usuarioId = req.user.id;
     
     console.log(`🎯 Solicitud de inicio de viaje - Serial: ${serialNumber}, Usuario: ${usuarioId}`);
     
     // Validaciones básicas
-    if (!serialNumber || !usuarioId) {
+    if (!serialNumber) {
       return res.status(400).json({
         success: false,
-        message: 'Número de serie y ID de usuario son requeridos'
+        message: 'Número de serie requeridos'
       });
     }
 
@@ -66,6 +107,9 @@ export const iniciarViajeConSerial = async (req, res) => {
     });
   }
 };
+
+//Aplicar middleware solo a la ruta de iniciarViajeConSerial
+export const iniciarViajeConSerialConAuth = [extractUserFromToken, iniciarViajeConSerial];
 
 /*
 export const getTelemetriaActual = async (req, res) => {
