@@ -43,7 +43,7 @@ import bicicletaRoutes from './routes/bikes.js';
 
 // Usar rutas
 app.use('/api/users', userRoutes);
-app.use('/bicicletas', bicicletaRoutes);
+app.use('/api/bikes', bicicletaRoutes); ///bicicletas
 
 // 4. Manejo global de errores
 app.use((error, req, res, next) => {
