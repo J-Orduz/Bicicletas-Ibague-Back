@@ -8,6 +8,8 @@ router.get("/:id/EstacionesBici", bicicletaController.getBicicletasPorEstacion);
 router.post("/reservar", bicicletaController.reservarBicicletaConAuth);
 router.post("/cancelar-reserva", bicicletaController.cancelarReservaConAuth);
 router.post("/iniciar-viaje", bicicletaController.iniciarViajeConSerialConAuth);
+router.get("/reservas/usuario", bicicletaController.obtenerReservasUsuarioConAuth);
+router.get("/reservas/activa", bicicletaController.obtenerReservaActivaConAuth);
 //router.get("/:id/telemetria", bicicletaController.getTelemetriaActual);
 //router.get("/:id/telemetria/historico", bicicletaController.getTelemetriaHistorico);
 

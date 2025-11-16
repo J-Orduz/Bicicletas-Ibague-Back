@@ -35,7 +35,9 @@ export const producedEvents = {
       bikeId: "", 
       usuarioId: "", 
       numero_serie: "", 
+      reservaId: "",
       timestamp: "", 
+      expiracion: "",
       tiempo_reserva: 0 
     }
   },
@@ -45,7 +47,30 @@ export const producedEvents = {
       bikeId: "", 
       usuarioId: "", 
       numero_serie: "", 
-      timestamp: "" 
+      reservaId: "",
+      timestamp: "",
+      motivo: "" 
+    }
+  },
+  reserva_expirada: {
+    type: "reserva_expirada",
+    data: { 
+      bikeId: "", 
+      usuarioId: "", 
+      numero_serie: "", 
+      reservaId: "",
+      timestamp: "", 
+      expiracion_original: "" 
+    }
+  },
+  reserva_completada: {
+    type: "reserva_completada", 
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
+      reservaId: "",
+      timestamp: ""
     }
   }
 };

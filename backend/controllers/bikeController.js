@@ -200,10 +200,112 @@ export const iniciarViajeConSerial = async (req, res) => {
   }
 };
 
+// ✅ NUEVO: Obtener reservas del usuario
+export const obtenerReservasUsuario = async (req, res) => {
+    try {
+        const usuarioId = req.user.id;
+        
+        console.log(`📋 Obteniendo reservas para usuario: ${usuarioId}`);
+        
+        const { data: reservas, error } = await supabase
+            .from('Reserva')
+            .select(`
+                id,
+                bicicleta_id,
+                numero_serie,
+                estado_reserva,
+                timestamp_reserva,
+                timestamp_expiracion,
+                timestamp_finalizacion,
+                motivo_finalizacion,
+                Bicicleta (
+                    id,
+                    marca,
+                    tipo,
+                    estado,
+                    idEstacion
+                )
+            `)
+            .eq('usuario_id', usuarioId)
+            .order('timestamp_reserva', { ascending: false });
+
+        if (error) {
+            throw new Error(`Error al obtener reservas: ${error.message}`);
+        }
+
+        res.status(200).json({
+            success: true,
+            data: reservas || [],
+            message: `Se encontraron ${reservas?.length || 0} reservas`
+        });
+
+    } catch (error) {
+        console.error('❌ Error obteniendo reservas:', error);
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// ✅ NUEVO: Obtener reserva activa del usuario
+export const obtenerReservaActiva = async (req, res) => {
+    try {
+        const usuarioId = req.user.id;
+        
+        console.log(`🔍 Buscando reserva activa para usuario: ${usuarioId}`);
+        
+        const { data: reservaActiva, error } = await supabase
+            .from('Reserva')
+            .select(`
+                id,
+                bicicleta_id,
+                numero_serie,
+                estado_reserva,
+                timestamp_reserva,
+                timestamp_expiracion,
+                Bicicleta (
+                    id,
+                    marca,
+                    tipo,
+                    estado,
+                    idEstacion,
+                    Estacion (
+                        id,
+                        nombre,
+                        posicion
+                    )
+                )
+            `)
+            .eq('usuario_id', usuarioId)
+            .eq('estado_reserva', 'activa')
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no encontrado
+            throw new Error(`Error al buscar reserva activa: ${error.message}`);
+        }
+
+        res.status(200).json({
+            success: true,
+            data: reservaActiva || null,
+            message: reservaActiva ? 'Reserva activa encontrada' : 'No hay reserva activa'
+        });
+
+    } catch (error) {
+        console.error('❌ Error obteniendo reserva activa:', error);
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 // Aplicar middleware a las nuevas rutas
 export const iniciarViajeConSerialConAuth = [extractUserFromToken, iniciarViajeConSerial];
 export const reservarBicicletaConAuth = [extractUserFromToken, reservarBicicleta];
 export const cancelarReservaConAuth = [extractUserFromToken, cancelarReserva];
+export const obtenerReservasUsuarioConAuth = [extractUserFromToken, obtenerReservasUsuario];
+export const obtenerReservaActivaConAuth = [extractUserFromToken, obtenerReservaActiva];
 
 /*
 export const getTelemetriaActual = async (req, res) => {
