@@ -51,20 +51,110 @@ const extractUserFromToken = async (req, res, next) => {
   }
 };
 
+// Endpoint para reservar bicicleta
+export const reservarBicicleta = async (req, res) => {
+    try {
+        const { bikeId } = req.body;
+        const usuarioId = req.user.id;
+        
+        console.log(`📋 Solicitud de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
+        
+        // Validaciones básicas
+        if (!bikeId) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de bicicleta es requerido'
+            });
+        }
+
+        // Reservar bicicleta
+        const resultado = await bikeHandler.reservarBicicleta(bikeId, usuarioId);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Bicicleta reservada exitosamente',
+            data: resultado
+        });
+
+    } catch (error) {
+        console.error('❌ Error en controlador de reserva:', error);
+        
+        let statusCode = 400;
+        let message = error.message;
+
+        // Manejar errores específicos
+        if (error.message.includes('no encontrada')) {
+            statusCode = 404;
+        } else if (error.message.includes('no está disponible')) {
+            statusCode = 409; // Conflict
+        }
+
+        res.status(statusCode).json({
+            success: false,
+            message: message
+        });
+    }
+};
+
+// Endpoint para cancelar reserva
+export const cancelarReserva = async (req, res) => {
+    try {
+        const { bikeId } = req.body;
+        const usuarioId = req.user.id;
+        
+        console.log(`❌ Solicitud de cancelación de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
+        
+        // Validaciones básicas
+        if (!bikeId) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de bicicleta es requerido'
+            });
+        }
+
+        // Cancelar reserva
+        const resultado = await bikeHandler.cancelarReserva(bikeId, usuarioId);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Reserva cancelada exitosamente',
+            data: resultado
+        });
+
+    } catch (error) {
+        console.error('❌ Error en controlador de cancelación de reserva:', error);
+        
+        let statusCode = 400;
+        let message = error.message;
+
+        // Manejar errores específicos
+        if (error.message.includes('no encontrada')) {
+            statusCode = 404;
+        } else if (error.message.includes('no está reservada')) {
+            statusCode = 409; // Conflict
+        }
+
+        res.status(statusCode).json({
+            success: false,
+            message: message
+        });
+    }
+};
+
 
 // Endpoint para iniciar viaje con número de serie
 export const iniciarViajeConSerial = async (req, res) => {
   try {
-    const { serialNumber } = req.body;
+    const { serialNumber, bikeId } = req.body;
     const usuarioId = req.user.id;
     
-    console.log(`🎯 Solicitud de inicio de viaje - Serial: ${serialNumber}, Usuario: ${usuarioId}`);
+    console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}`);
     
     // Validaciones básicas
-    if (!serialNumber) {
+    if (!serialNumber || !bikeId) {
       return res.status(400).json({
         success: false,
-        message: 'Número de serie requeridos'
+        message: 'Número de serie e ID de bicicleta son requeridos'
       });
     }
 
@@ -78,7 +168,7 @@ export const iniciarViajeConSerial = async (req, res) => {
     }
 
     // Iniciar viaje
-    const resultado = await bikeHandler.iniciarViajeConSerial(serialNumber, usuarioId);
+    const resultado = await bikeHandler.iniciarViajeConSerial(serialNumber, bikeId, usuarioId);
     
     res.status(200).json({
       success: true,
@@ -99,6 +189,8 @@ export const iniciarViajeConSerial = async (req, res) => {
       statusCode = 409; // Conflict
     } else if (error.message.includes('candado')) {
       statusCode = 503; // Service Unavailable
+    } else if (error.message.includes('no coincide')) {
+      statusCode = 400; // Bad Request
     }
 
     res.status(statusCode).json({
@@ -108,8 +200,10 @@ export const iniciarViajeConSerial = async (req, res) => {
   }
 };
 
-//Aplicar middleware solo a la ruta de iniciarViajeConSerial
+// Aplicar middleware a las nuevas rutas
 export const iniciarViajeConSerialConAuth = [extractUserFromToken, iniciarViajeConSerial];
+export const reservarBicicletaConAuth = [extractUserFromToken, reservarBicicleta];
+export const cancelarReservaConAuth = [extractUserFromToken, cancelarReserva];
 
 /*
 export const getTelemetriaActual = async (req, res) => {

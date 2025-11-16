@@ -28,5 +28,24 @@ export const producedEvents = {
   bicicleta_registrada: {
     type: "bicicleta_registrada",
     data: {}
+  },
+  bicicleta_reservada: {
+    type: "bicicleta_reservada",
+    data: { 
+      bikeId: "", 
+      usuarioId: "", 
+      numero_serie: "", 
+      timestamp: "", 
+      tiempo_reserva: 0 
+    }
+  },
+  reserva_cancelada: {
+    type: "reserva_cancelada",
+    data: { 
+      bikeId: "", 
+      usuarioId: "", 
+      numero_serie: "", 
+      timestamp: "" 
+    }
   }
 };

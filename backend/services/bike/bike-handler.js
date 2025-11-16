@@ -154,16 +154,121 @@ class BikeHandler {
   }
 
 
-// Iniciar viaje con número de serie
-async iniciarViajeConSerial(serialNumber, usuarioId) {
+// Reservar bicicleta
+async reservarBicicleta(bikeId, usuarioId) {
     try {
-      console.log(`🎯 Solicitud de inicio de viaje - Serial: ${serialNumber}, Usuario: ${usuarioId}`);
+        console.log(`📋 Solicitud de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
+        
+        // 1. Verificar que la bicicleta existe
+        const bicicleta = await this.getBike(bikeId);
+        
+        if (!bicicleta) {
+            throw new Error('Bicicleta no encontrada');
+        }
+
+        // 2. Verificar que esté disponible
+        if (bicicleta.estado !== BikeStatus.DISPONIBLE) {
+            throw new Error(`La bicicleta no está disponible para reservar. Estado actual: ${bicicleta.estado}`);
+        }
+
+        console.log(`✅ Bicicleta disponible para reserva:`, {
+            id: bicicleta.id,
+            numero_serie: bicicleta.numero_serie,
+            estado_actual: bicicleta.estado
+        });
+
+        // 3. Actualizar estado a "Reservada"
+        const bicicletaActualizada = await this.changeStatus(bikeId, BikeStatus.RESERVADA);
+
+        // 4. Publicar evento de reserva
+        await eventBus.publish(CHANNELS.RESERVAS, {
+            type: "bicicleta_reservada",
+            data: {
+                bikeId: bicicleta.id,
+                usuarioId: usuarioId,
+                numero_serie: bicicleta.numero_serie,
+                timestamp: new Date().toISOString(),
+                tiempo_reserva: 10 // minutos de reserva
+            }
+        });
+
+        console.log(`✅ Bicicleta reservada exitosamente: ${bicicleta.numero_serie} para usuario ${usuarioId}`);
+        
+        return {
+            success: true,
+            bicicleta: bicicletaActualizada,
+            tiempo_reserva: 10,
+            mensaje: 'Bicicleta reservada exitosamente. Tienes 10 minutos para retirarla.'
+        };
+
+    } catch (error) {
+        console.error('❌ Error reservando bicicleta:', error.message);
+        throw error;
+    }
+}
+
+
+// Cancelar reserva
+async cancelarReserva(bikeId, usuarioId) {
+    try {
+        console.log(`❌ Solicitud de cancelación de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
+        
+        // 1. Verificar que la bicicleta existe
+        const bicicleta = await this.getBike(bikeId);
+        
+        if (!bicicleta) {
+            throw new Error('Bicicleta no encontrada');
+        }
+
+        // 2. Verificar que esté reservada
+        if (bicicleta.estado !== BikeStatus.RESERVADA) {
+            throw new Error(`La bicicleta no está reservada. Estado actual: ${bicicleta.estado}`);
+        }
+
+        // 3. Actualizar estado a "Disponible"
+        const bicicletaActualizada = await this.changeStatus(bikeId, BikeStatus.DISPONIBLE);
+
+        // 4. Publicar evento de cancelación de reserva
+        await eventBus.publish(CHANNELS.RESERVAS, {
+            type: "reserva_cancelada",
+            data: {
+                bikeId: bicicleta.id,
+                usuarioId: usuarioId,
+                numero_serie: bicicleta.numero_serie,
+                timestamp: new Date().toISOString()
+            }
+        });
+
+        console.log(`✅ Reserva cancelada exitosamente: ${bicicleta.numero_serie}`);
+        
+        return {
+            success: true,
+            bicicleta: bicicletaActualizada,
+            mensaje: 'Reserva cancelada exitosamente'
+        };
+
+    } catch (error) {
+        console.error('❌ Error cancelando reserva:', error.message);
+        throw error;
+    }
+}
+
+
+// Iniciar viaje con número de serie
+async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
+    try {
+      console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}`);
       
       // 1. Buscar bicicleta por número de serie
       const bicicleta = await this.getBikeBySerial(serialNumber);
       
       if (!bicicleta) {
         throw new Error('Bicicleta no encontrada');
+      }
+
+      // Verificar que el serial corresponde al bikeId
+      if (bicicleta.id !== bikeId) {
+        throw new Error(`El número de serie ${serialNumber} no corresponde a la bicicleta seleccionada`);
       }
 
       // 2. Verificar que esté disponible o reservada para este usuario
