@@ -173,6 +173,12 @@ async reservarBicicleta(bikeId, usuarioId) {
     try {
         console.log(`📋 Solicitud de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
         
+        // Verificar que el usuario no tenga ya una reserva activa
+          const tieneReservaActiva = await this.verificarReservaActivaExistente(usuarioId);
+          if (tieneReservaActiva) {
+              throw new Error('Ya tienes una reserva activa. Debes cancelarla o completarla antes de hacer una nueva reserva.');
+          }
+
         // 1. Verificar que la bicicleta existe
         const bicicleta = await this.getBike(bikeId);
         
@@ -256,7 +262,7 @@ async reservarBicicleta(bikeId, usuarioId) {
             reserva: nuevaReserva,
             tiempo_reserva: 10,
             expiracion: expiracion.toISOString(),
-            mensaje: 'Bicicleta reservada exitosamente. Tienes 15 minutos para retirarla.'
+            mensaje: 'Bicicleta reservada exitosamente. Tienes 10 minutos para retirarla.'
         };
 
     } catch (error) {
@@ -265,6 +271,48 @@ async reservarBicicleta(bikeId, usuarioId) {
     }
 }
 
+
+// Método para verificar si el usuario ya tiene una reserva activa
+async verificarReservaActivaExistente(usuarioId) {
+    try {
+        const { data: reservaActiva, error } = await supabase
+            .from(reservaTable)
+            .select('id, bicicleta_id, numero_serie, timestamp_expiracion')
+            .eq('usuario_id', usuarioId)
+            .eq('estado_reserva', ReservaStatus.ACTIVA)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') { // No encontrado
+                console.log(`✅ Usuario ${usuarioId} no tiene reservas activas`);
+                return false;
+            }
+            throw error;
+        }
+
+        // Verificar que la reserva no haya expirado
+        const ahora = new Date();
+        const expiracion = new Date(reservaActiva.timestamp_expiracion);
+        
+        if (ahora > expiracion) {
+            console.log(`⚠️ Usuario ${usuarioId} tiene reserva expirada, se considerará como no activa`);
+            return false;
+        }
+
+        console.log(`❌ Usuario ${usuarioId} YA TIENE una reserva activa:`, {
+            reservaId: reservaActiva.id,
+            bicicletaId: reservaActiva.bicicleta_id,
+            numeroSerie: reservaActiva.numero_serie,
+            expiracion: reservaActiva.timestamp_expiracion
+        });
+        
+        return true;
+
+    } catch (error) {
+        console.error('❌ Error verificando reserva activa existente:', error);
+        return false; // En caso de error, permitir continuar
+    }
+}
 
 // Cancelar reserva
 async cancelarReserva(bikeId, usuarioId) {
