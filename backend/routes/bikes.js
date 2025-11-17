@@ -3,13 +3,18 @@ import * as bicicletaController from "../controllers/bikeController.js";
 
 const router = Router();
 
+// === RUTAS PÚBLICAS (sin autenticación) ===
 router.get("/estaciones", bicicletaController.getEstaciones);
 router.get("/:id/EstacionesBici", bicicletaController.getBicicletasPorEstacion);
-router.post("/reservar", bicicletaController.reservarBicicletaConAuth);
-router.post("/cancelar-reserva", bicicletaController.cancelarReservaConAuth);
-router.post("/iniciar-viaje", bicicletaController.iniciarViajeConSerialConAuth);
-router.get("/reservas/usuario", bicicletaController.obtenerReservasUsuarioConAuth);
-router.get("/reservas/activa", bicicletaController.obtenerReservaActivaConAuth);
+router.get("/", bicicletaController.getAllBicicletas);
+router.get("/:id", bicicletaController.getBicicleta);
+router.get("/serial/:serialNumber", bicicletaController.getBicicletaBySerial);
+
+// === RUTAS PROTEGIDAS (requieren autenticación de admin) ===
+// router.post("/", bicicletaController.registrarBicicletaConAuth);
+// router.put("/:id/posicion", bicicletaController.actualizarPosicionConAuth);
+// router.post("/:id/reportar-abandonada", bicicletaController.reportarAbandonadaConAuth);
+
 //router.get("/:id/telemetria", bicicletaController.getTelemetriaActual);
 //router.get("/:id/telemetria/historico", bicicletaController.getTelemetriaHistorico);
 

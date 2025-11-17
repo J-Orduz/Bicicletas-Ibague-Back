@@ -1,7 +1,5 @@
 import { supabase } from "../../shared/supabase/client.js";
 
-
-
 const listarEstaciones = async () => {
     let { data, error } = await supabase
         .from('Estacion')
@@ -10,7 +8,6 @@ const listarEstaciones = async () => {
     if (error) throw error;
     return data;
 }
-
 
 const listarBicicletasPorEstacion = async (idEstacion) => {
     const { data, error } = await supabase
@@ -23,7 +20,6 @@ const listarBicicletasPorEstacion = async (idEstacion) => {
     if (error) throw error;
     return data;
 };
-
 
 
 export const bicicletaService = {

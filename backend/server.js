@@ -29,22 +29,31 @@ app.get('/health', (req, res) => {
 // 3. Inicialización de servicios globales
 import { eventBus } from './event-bus/index.js';
 
-/*const initializeGlobalServices = () => {
+const initializeGlobalServices = () => {
   console.log('🚀 Inicializando Event-Bus y servicios...');
   // Los servicios se auto-registran al importarlos
-  import('./services/notification/index.js');
-  import('./services/etl/index.js');
-};*/
+  import('./services/bike/index.js').then(module => {
+    module.initBikeService();
+  });
+
+  import('./services/booking/index.js').then(module => {
+    module.initBookingService();
+  });
+  /*import('./services/notification/index.js');
+  import('./services/etl/index.js');*/
+};
 
 
 // Importar rutas
 import userRoutes from './routes/users.js';
-import bicicletaRoutes from './routes/bikes.js';
-import { reservaCleanupService } from './services/bike/reserva-cleanup.js';
+import bikeRoutes from './routes/bikes.js';
+import bookingRoutes from './routes/bookings.js';
+import { reservaCleanupService } from './services/booking/reserva-cleanup.js';
 
 // Usar rutas
 app.use('/api/users', userRoutes);
-app.use('/api/bikes', bicicletaRoutes); ///bicicletas
+app.use('/api/bikes', bikeRoutes); ///bicicletas
+app.use('/api/booking', bookingRoutes);
 
 // 4. Manejo global de errores
 app.use((error, req, res, next) => {
