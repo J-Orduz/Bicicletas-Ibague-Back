@@ -483,6 +483,18 @@ async liberarReservasExpiradas() {
               return null;
           }
 
+          // Publicar evento de reserva completada
+          await eventBus.publish(CHANNELS.RESERVAS, {
+              type: "reserva_completada",
+              data: {
+                  bikeId: bikeId,
+                  usuarioId: usuarioId,
+                  numero_serie: reservaActiva.numero_serie,
+                  reservaId: reservaActiva.id,
+                  timestamp: new Date().toISOString()
+              }
+          });
+
           console.log(`✅ Reserva completada: ${reservaActiva.numero_serie} (ID: ${reservaActiva.id})`);
           return reservaCompletada;
 
@@ -510,6 +522,13 @@ async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
         throw new Error(`El número de serie ${serialNumber} no corresponde a la bicicleta seleccionada`);
       }
 
+      // Verificar que el usuario tiene reserva activa para esta bicicleta
+        const tieneReservaActiva = await this.verificarReservaActivaUsuario(bikeId, usuarioId);
+        if (!tieneReservaActiva) {
+            throw new Error('No tienes una reserva activa para esta bicicleta. Debes reservarla primero.');
+        }
+
+
       // 2. Verificar que esté disponible o reservada para este usuario
       if (bicicleta.estado !== BikeStatus.DISPONIBLE && 
           bicicleta.estado !== BikeStatus.RESERVADA) {
@@ -519,7 +538,8 @@ async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
       console.log(`✅ Bicicleta lista para viaje:`, {
         id: bicicleta.id,
         numero_serie: bicicleta.numero_serie,
-        estado: bicicleta.estado
+        estado: bicicleta.estado,
+        tiene_reserva_activa: true
       });
 
       // 3. Simular desbloqueo del candado (≤ 1 segundo)
@@ -533,9 +553,9 @@ async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
       console.log(`🔄 Actualizando estado con ID real: ${bicicleta.id}`);
       const bicicletaActualizada = await this.changeStatus(bicicleta.id, BikeStatus.EN_USO);
 
-      // 4.5. Completar la reserva si existe
-      await this.completarReserva(bicicleta.id, usuarioId);
-      
+      // 4.5. Completar la reserva (cambiar estado a "completada")
+      const reservaCompletada = await this.completarReserva(bicicleta.id, usuarioId);
+
       // 5. Publicar evento de viaje iniciado
       await eventBus.publish(CHANNELS.VIAJES, {
         type: "viaje_iniciado",
@@ -543,6 +563,7 @@ async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
           bikeId: bicicleta.id,
           usuarioId: usuarioId,
           serialNumber: serialNumber,
+          reservaId: reservaCompletada?.id,
           timestamp: new Date().toISOString(),
           tiempoDesbloqueo: desbloqueoExitoso.tiempo
         }
@@ -563,6 +584,42 @@ async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
     }
   }
 
+  // Método para verificar reserva activa del usuario
+  async verificarReservaActivaUsuario(bikeId, usuarioId) {
+      try {
+          const { data: reservaActiva, error } = await supabase
+              .from(reservaTable)
+              .select('id, timestamp_expiracion')
+              .eq('bicicleta_id', bikeId)
+              .eq('usuario_id', usuarioId)
+              .eq('estado_reserva', ReservaStatus.ACTIVA)
+              .single();
+
+          if (error) {
+              if (error.code === 'PGRST116') { // No encontrado
+                  console.log(`❌ Usuario ${usuarioId} no tiene reserva activa para bicicleta ${bikeId}`);
+                  return false;
+              }
+              throw error;
+          }
+
+          // Verificar que la reserva no haya expirado
+          const ahora = new Date();
+          const expiracion = new Date(reservaActiva.timestamp_expiracion);
+          
+          if (ahora > expiracion) {
+              console.log(`⚠️ Reserva ${reservaActiva.id} expirada para usuario ${usuarioId}`);
+              return false;
+          }
+
+          console.log(`✅ Usuario ${usuarioId} tiene reserva activa para bicicleta ${bikeId}`);
+          return true;
+
+      } catch (error) {
+          console.error('❌ Error verificando reserva activa:', error);
+          return false;
+      }
+  }
 
   // Simular desbloqueo de candado (≤ 1 segundo)
   async simularDesbloqueoCandado(bikeId) {
