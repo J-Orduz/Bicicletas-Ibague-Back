@@ -1,24 +1,39 @@
-import { bikeHandler, BikeStatus, ReservaStatus } from "./bike-handler.js";
+import { bikeHandler, BikeStatus } from "./bike-handler.js";
 
 export const consumedEvents = {
-	viaje_iniciado: async event =>  {
-		const { bikeId } = event.data;
-		await bikeHandler.changeStatus(bikeId, BikeStatus.EN_USO);
-	},
-	viaje_finalizado: async event => {
-		const { bikeId, dockId } = event.data;
-		await bikeHandler.linkBike(bikeId, dockId);
-	},
-	mantenimiento_solicitado: async event => {
-		const { bikeId } = event.data;
-		await bikeHandler.changeStatus(bikeId, BikeStatus.mantenimiento_solicitado);
-	},
-	reserva_completada: async event => {
-		const { bikeId, usuarioId } = event.data;
-		await bikeHandler.completarReserva(bikeId, usuarioId);
-	},
-	reserva_expirada: async event => {
-		const { bikeId } = event.data;
-		await bikeHandler.changeStatus(bikeId, BikeStatus.DISPONIBLE);
-	}
+  // Eventos de Booking que afectan el estado de bicicletas
+  viaje_iniciado: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.EN_USO);
+  },
+  
+  viaje_finalizado: async (event) => {
+    const { bikeId, dockId } = event.data;
+    await bikeHandler.linkBike(bikeId, dockId);
+  },
+  
+  bicicleta_reservada: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.RESERVADA);
+  },
+  
+  reserva_cancelada: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.DISPONIBLE);
+  },
+  
+  reserva_expirada: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.DISPONIBLE);
+  },
+  
+  mantenimiento_solicitado: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.MANTENIMIENTO);
+  },
+  
+  bicicleta_reportada: async (event) => {
+    const { bikeId } = event.data;
+    await bikeHandler.changeStatus(bikeId, BikeStatus.BLOQUEADA);
+  }
 };

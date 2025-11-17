@@ -1,3 +1,18 @@
-// Rutas para gestión de reservas y viajes
-// Endpoints: /api/bookings/reserve, /api/bookings/start, /api/bookings/end
-// Responsable: Definir las URLs para operaciones de reservas y viajes
+import { Router } from "express";
+import * as bookingController from "../controllers/bookingController.js";
+
+const router = Router();
+
+// === RUTAS DE RESERVA ===
+router.post("/reservar", bookingController.reservarBicicletaConAuth);
+router.post("/cancelar-reserva", bookingController.cancelarReservaConAuth);
+
+// === RUTAS DE VIAJE ===
+router.post("/iniciar-viaje", bookingController.iniciarViajeConSerialConAuth);
+
+// === RUTAS DE CONSULTA ===
+router.get("/reservas/usuario", bookingController.obtenerReservasUsuarioConAuth);
+router.get("/reservas/activa", bookingController.obtenerReservaActivaConAuth);
+router.get("/historial/viajes", bookingController.obtenerHistorialViajesConAuth);
+
+export default router;
