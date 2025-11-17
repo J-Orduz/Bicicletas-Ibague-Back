@@ -40,6 +40,7 @@ import { eventBus } from './event-bus/index.js';
 // Importar rutas
 import userRoutes from './routes/users.js';
 import bicicletaRoutes from './routes/bikes.js';
+import { reservaCleanupService } from './services/bike/reserva-cleanup.js';
 
 // Usar rutas
 app.use('/api/users', userRoutes);
@@ -62,5 +63,6 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   
   // Inicializar servicios después de que el servidor esté listo
+  reservaCleanupService.start();
   //initializeGlobalServices();
 });
