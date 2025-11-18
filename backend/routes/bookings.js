@@ -6,6 +6,7 @@ const router = Router();
 // === RUTAS DE RESERVA ===
 router.post("/reservar", bookingController.reservarBicicletaConAuth);
 router.post("/cancelar-reserva", bookingController.cancelarReservaConAuth);
+router.post("/reservar-programada", bookingController.reservarBicicletaProgramadaConAuth);
 
 // === RUTAS DE VIAJE ===
 router.post("/iniciar-viaje", bookingController.iniciarViajeConSerialConAuth);

@@ -1,8 +1,7 @@
-// controllers/bookingController.js
 import { bookingHandler } from "../services/booking/booking-handler.js";
 import { supabase } from "../shared/supabase/client.js";
 
-// ✅ Middleware para extraer usuario del token (igual que en bikeController)
+// Middleware para extraer usuario del token 
 const extractUserFromToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -257,6 +256,60 @@ export const obtenerHistorialViajes = async (req, res) => {
   }
 };
 
+// === PARA RESERVA PROGRAMADA ===
+
+export const reservarBicicletaProgramada = async (req, res) => {
+  try {
+    const { bikeId, fechaHoraProgramada } = req.body;
+    const usuarioId = req.user.id;
+    
+    console.log(`📅 Solicitud de reserva programada - BikeID: ${bikeId}, Usuario: ${usuarioId}, Fecha: ${fechaHoraProgramada}`);
+    
+    if (!bikeId || !fechaHoraProgramada) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de bicicleta y fecha/hora programada son requeridos'
+      });
+    }
+
+    // Validar formato de fecha
+    const fechaProgramada = new Date(fechaHoraProgramada);
+    if (isNaN(fechaProgramada.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Formato de fecha/hora inválido'
+      });
+    }
+
+    const resultado = await bookingHandler.reservarBicicletaProgramada(bikeId, usuarioId, fechaHoraProgramada);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Bicicleta reservada programadamente',
+      data: resultado
+    });
+
+  } catch (error) {
+    console.error('❌ Error en controlador de reserva programada:', error);
+    
+    let statusCode = 400;
+    let message = error.message;
+
+    if (error.message.includes('no encontrada')) {
+      statusCode = 404;
+    } else if (error.message.includes('Ya tienes una reserva')) {
+      statusCode = 409;
+    } else if (error.message.includes('fecha debe ser futura')) {
+      statusCode = 400;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      message: message
+    });
+  }
+};
+
 // === APLICAR MIDDLEWARE A LAS RUTAS ===
 
 export const reservarBicicletaConAuth = [extractUserFromToken, reservarBicicleta];
@@ -265,3 +318,4 @@ export const iniciarViajeConSerialConAuth = [extractUserFromToken, iniciarViajeC
 export const obtenerReservasUsuarioConAuth = [extractUserFromToken, obtenerReservasUsuario];
 export const obtenerReservaActivaConAuth = [extractUserFromToken, obtenerReservaActiva];
 export const obtenerHistorialViajesConAuth = [extractUserFromToken, obtenerHistorialViajes];
+export const reservarBicicletaProgramadaConAuth = [extractUserFromToken, reservarBicicletaProgramada];

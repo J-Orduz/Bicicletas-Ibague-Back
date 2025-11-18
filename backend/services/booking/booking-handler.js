@@ -1,4 +1,3 @@
-// services/booking/booking-handler.js
 import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
@@ -8,15 +7,19 @@ const bikeTable = "Bicicleta";
 
 export const ReservaStatus = {
   ACTIVA: 'activa',
+  PROGRAMADA: 'programada',
   COMPLETADA: 'completada', 
   CANCELADA: 'cancelada',
-  EXPIRADA: 'expirada'
+  EXPIRADA: 'expirada',
+  FALLIDA: 'fallida'
 };
 
 export const MotivoFinalizacion = {
   INICIO_VIAJE: 'inicio_viaje',
-  CANCELACION_USUARIO: 'cancelacion_usuario',
-  EXPIRACION_TIEMPO: 'expiracion_tiempo'
+  CANCELACION_USUARIO: 'cancelacion_usuario', 
+  EXPIRACION_TIEMPO: 'expiracion_tiempo',
+  BICICLETA_NO_DISPONIBLE: 'bicicleta_no_disponible',
+  ERROR_ACTIVACION: 'error_activacion'
 };
 
 export const BikeStatus = {
@@ -221,6 +224,256 @@ class BookingHandler {
       console.error('❌ Error cancelando reserva:', error.message);
       throw error;
     }
+  }
+
+  async reservarBicicletaProgramada(bikeId, usuarioId, fechaHoraProgramada) {
+    try {
+      console.log(`📅 Solicitud de reserva programada - BikeID: ${bikeId}, Usuario: ${usuarioId}, Fecha: ${fechaHoraProgramada}`);
+      
+      // Validar fecha futura
+      const fechaProgramada = new Date(fechaHoraProgramada);
+      const ahora = new Date();
+      
+      if (fechaProgramada <= ahora) {
+        throw new Error('La fecha de reserva debe ser futura');
+      }
+
+      // Verificar que no tenga reserva programada para la misma fecha/hora
+      const tieneReservaSolapada = await this.verificarReservaSolapada(usuarioId, bikeId, fechaProgramada);
+      if (tieneReservaSolapada) {
+        throw new Error('Ya tienes una reserva programada para esta bicicleta en ese horario');
+      }
+
+      // 1. Verificar que la bicicleta existe
+      const { data: bicicleta, error: bikeError } = await supabase
+        .from(bikeTable)
+        .select("*")
+        .eq("id", bikeId)
+        .single();
+      
+      if (bikeError || !bicicleta) {
+        throw new Error('Bicicleta no encontrada');
+      }
+
+      // 2. Calcular timestamps (la reserva se activa en la fecha programada)
+      const timestampActivacion = fechaProgramada.toISOString();
+      const expiracion = new Date(fechaProgramada.getTime() + 10 * 60 * 1000); // 10 min después
+
+      // 3. Crear registro de reserva programada
+      const { data: nuevaReserva, error: reservaError } = await supabase
+        .from(reservaTable)
+        .insert({
+          usuario_id: usuarioId,
+          bicicleta_id: bikeId,
+          numero_serie: bicicleta.numero_serie,
+          estado_reserva: ReservaStatus.PROGRAMADA, // ✅ NUEVO ESTADO
+          timestamp_reserva: ahora.toISOString(),
+          timestamp_programada: timestampActivacion, // ✅ Fecha programada
+          timestamp_expiracion: expiracion.toISOString(),
+          tipo_reserva: 'programada' // ✅ Tipo de reserva
+        })
+        .select()
+        .single();
+
+      if (reservaError) {
+        throw new Error(`Error al crear reserva programada: ${reservaError.message}`);
+      }
+
+      // 4. Programar la activación de la reserva
+      this.programarActivacionReserva(nuevaReserva.id, fechaProgramada);
+
+      // 5. Publicar evento de reserva programada
+      await eventBus.publish(CHANNELS.RESERVAS, {
+        type: "reserva_programada",
+        data: {
+          bikeId: bicicleta.id,
+          usuarioId: usuarioId,
+          numero_serie: bicicleta.numero_serie,
+          reservaId: nuevaReserva.id,
+          timestamp_programada: timestampActivacion,
+          timestamp_creacion: ahora.toISOString()
+        }
+      });
+
+      console.log(`✅ Reserva programada exitosamente: ${bicicleta.numero_serie} para ${fechaProgramada}`);
+      
+      return {
+        success: true,
+        reserva: nuevaReserva,
+        tiempo_restante: fechaProgramada.getTime() - ahora.getTime(),
+        mensaje: `Reserva programada exitosamente para ${fechaProgramada.toLocaleString()}`
+      };
+
+    } catch (error) {
+      console.error('❌ Error reservando bicicleta programada:', error.message);
+      throw error;
+    }
+  }
+
+  async programarActivacionReserva(reservaId, fechaActivacion) {
+    const ahora = new Date();
+    const tiempoEspera = fechaActivacion.getTime() - ahora.getTime();
+    
+    if (tiempoEspera <= 0) {
+      // Si ya pasó la fecha, activar inmediatamente
+      this.activarReservaProgramada(reservaId);
+      return;
+    }
+
+    console.log(`⏰ Programando activación de reserva ${reservaId} en ${tiempoEspera}ms`);
+    
+    setTimeout(async () => {
+      try {
+        await this.activarReservaProgramada(reservaId);
+      } catch (error) {
+        console.error(`❌ Error activando reserva programada ${reservaId}:`, error);
+      }
+    }, tiempoEspera);
+  }
+
+  async activarReservaProgramada(reservaId) {
+    try {
+      console.log(`🔄 Activando reserva programada: ${reservaId}`);
+      
+      // 1. Obtener datos de la reserva
+      const { data: reserva, error } = await supabase
+        .from(reservaTable)
+        .select('*')
+        .eq('id', reservaId)
+        .eq('estado_reserva', ReservaStatus.PROGRAMADA)
+        .single();
+
+      if (error || !reserva) {
+        console.log(`❌ Reserva programada ${reservaId} no encontrada o ya activada`);
+        return;
+      }
+
+      // 2. Verificar que la bicicleta sigue disponible
+      const { data: bicicleta, error: bikeError } = await supabase
+        .from(bikeTable)
+        .select('*')
+        .eq('id', reserva.bicicleta_id)
+        .single();
+
+      if (bikeError || !bicicleta) {
+        await this.marcarReservaComoFallida(reservaId, 'Bicicleta no disponible');
+        return;
+      }
+
+      if (bicicleta.estado !== BikeStatus.DISPONIBLE) {
+        await this.marcarReservaComoFallida(reservaId, `Bicicleta no disponible. Estado: ${bicicleta.estado}`);
+        return;
+      }
+
+      // 3. Actualizar reserva a ACTIVA
+      const { data: reservaActualizada, error: updateError } = await supabase
+        .from(reservaTable)
+        .update({
+          estado_reserva: ReservaStatus.ACTIVA,
+          timestamp_activacion: new Date().toISOString()
+        })
+        .eq('id', reservaId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Error activando reserva: ${updateError.message}`);
+      }
+
+      // 4. Actualizar bicicleta a RESERVADA
+      const { data: bicicletaActualizada, error: bikeUpdateError } = await supabase
+        .from(bikeTable)
+        .update({ 
+          estado: BikeStatus.RESERVADA,
+          reserva_usuario_id: reserva.usuario_id,
+          reserva_timestamp: new Date().toISOString(),
+          reserva_expiracion: reserva.timestamp_expiracion
+        })
+        .eq('id', reserva.bicicleta_id)
+        .select()
+        .single();
+
+      if (bikeUpdateError) {
+        await this.marcarReservaComoFallida(reservaId, 'Error al reservar bicicleta');
+        return;
+      }
+
+      // 5. Publicar evento de activación
+      await eventBus.publish(CHANNELS.RESERVAS, {
+        type: "reserva_activada",
+        data: {
+          bikeId: bicicleta.id,
+          usuarioId: reserva.usuario_id,
+          numero_serie: bicicleta.numero_serie,
+          reservaId: reserva.id,
+          timestamp_activacion: new Date().toISOString(),
+          expiracion: reserva.timestamp_expiracion
+        }
+      });
+
+      console.log(`✅ Reserva programada activada: ${reservaId}`);
+
+    } catch (error) {
+      console.error(`❌ Error activando reserva programada ${reservaId}:`, error);
+      await this.marcarReservaComoFallida(reservaId, error.message);
+    }
+  }
+
+  async marcarReservaComoFallida(reservaId, motivo) {
+    try {
+
+      // Mapear mensajes de error a motivos específicos
+      let motivoFinalizacion = MotivoFinalizacion.ERROR_ACTIVACION;
+      
+      if (motivo.includes('Bicicleta no disponible')) {
+        motivoFinalizacion = MotivoFinalizacion.BICICLETA_NO_DISPONIBLE;
+      }
+
+      await supabase
+        .from(reservaTable)
+        .update({
+          estado_reserva: ReservaStatus.FALLIDA,
+          motivo_finalizacion: motivo,
+          timestamp_finalizacion: new Date().toISOString()
+        })
+        .eq('id', reservaId);
+
+      await eventBus.publish(CHANNELS.RESERVAS, {
+        type: "reserva_fallida",
+        data: {
+          reservaId: reservaId,
+          motivo: motivo,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log(`❌ Reserva ${reservaId} marcada como fallida: ${motivo}`);
+    } catch (error) {
+      console.error(`❌ Error marcando reserva como fallida ${reservaId}:`, error);
+    }
+  }
+
+  async verificarReservaSolapada(usuarioId, bikeId, fechaProgramada) {
+    const margen = 30 * 60 * 1000; // 30 minutos de margen
+    
+    const inicioBusqueda = new Date(fechaProgramada.getTime() - margen);
+    const finBusqueda = new Date(fechaProgramada.getTime() + margen);
+
+    const { data: reservasSolapadas, error } = await supabase
+      .from(reservaTable)
+      .select('id, timestamp_programada')
+      .eq('usuario_id', usuarioId)
+      .eq('bicicleta_id', bikeId)
+      .in('estado_reserva', [ReservaStatus.PROGRAMADA, ReservaStatus.ACTIVA])
+      .gte('timestamp_programada', inicioBusqueda.toISOString())
+      .lte('timestamp_programada', finBusqueda.toISOString());
+
+    if (error) {
+      console.error('❌ Error verificando reservas solapadas:', error);
+      return false;
+    }
+
+    return reservasSolapadas && reservasSolapadas.length > 0;
   }
 
   // === MÉTODOS DE VIAJE ===
