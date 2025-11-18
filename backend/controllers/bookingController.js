@@ -310,6 +310,145 @@ export const reservarBicicletaProgramada = async (req, res) => {
   }
 };
 
+
+// == PARA HISTORIAL DE REERVAS ==
+
+export const obtenerHistorialReservas = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const limite = parseInt(req.query.limite) || 10;
+    const pagina = parseInt(req.query.pagina) || 1;
+
+    // Validar parámetros
+    if (limite < 1 || limite > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'El límite debe estar entre 1 y 50'
+      });
+    }
+
+    if (pagina < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'La página debe ser mayor a 0'
+      });
+    }
+
+    console.log(`📊 Obteniendo historial de reservas - Usuario: ${usuarioId}, Límite: ${limite}, Página: ${pagina}`);
+
+    const resultado = await bookingHandler.obtenerHistorialReservasUsuario(usuarioId, limite, pagina);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Historial de reservas obtenido exitosamente',
+      data: resultado
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo historial de reservas:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error al obtener el historial de reservas'
+    });
+  }
+};
+
+export const obtenerEstadisticasUsuario = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+
+    console.log(`📈 Obteniendo estadísticas para usuario: ${usuarioId}`);
+
+    const estadisticas = await bookingHandler.obtenerEstadisticasUsuario(usuarioId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Estadísticas obtenidas exitosamente',
+      data: estadisticas
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo estadísticas:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener las estadísticas'
+    });
+  }
+};
+
+export const obtenerReservaPorId = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const reservaId = req.params.id;
+
+    console.log(`🔍 Obteniendo reserva específica - ID: ${reservaId}, Usuario: ${usuarioId}`);
+
+    if (!reservaId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de reserva es requerido'
+      });
+    }
+
+    // Obtener todas las reservas del usuario y filtrar
+    const { data: reservas, error } = await supabase
+      .from('Reserva')
+      .select(`
+        id,
+        bicicleta_id,
+        numero_serie,
+        estado_reserva,
+        timestamp_reserva,
+        timestamp_expiracion,
+        timestamp_finalizacion,
+        motivo_finalizacion,
+        timestamp_programada,
+        timestamp_activacion,
+        tipo_reserva,
+        Bicicleta (
+          id,
+          marca,
+          tipo,
+          idEstacion,
+          Estacion (
+            id,
+            nombre
+          )
+        )
+      `)
+      .eq('usuario_id', usuarioId)
+      .eq('id', reservaId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          message: 'Reserva no encontrada'
+        });
+      }
+      throw error;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Reserva obtenida exitosamente',
+      data: reservas
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo reserva específica:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener la reserva'
+    });
+  }
+};
+
+
 // === APLICAR MIDDLEWARE A LAS RUTAS ===
 
 export const reservarBicicletaConAuth = [extractUserFromToken, reservarBicicleta];
@@ -319,3 +458,6 @@ export const obtenerReservasUsuarioConAuth = [extractUserFromToken, obtenerReser
 export const obtenerReservaActivaConAuth = [extractUserFromToken, obtenerReservaActiva];
 export const obtenerHistorialViajesConAuth = [extractUserFromToken, obtenerHistorialViajes];
 export const reservarBicicletaProgramadaConAuth = [extractUserFromToken, reservarBicicletaProgramada];
+export const obtenerHistorialReservasConAuth = [extractUserFromToken, obtenerHistorialReservas];
+export const obtenerEstadisticasUsuarioConAuth = [extractUserFromToken, obtenerEstadisticasUsuario];
+export const obtenerReservaPorIdConAuth = [extractUserFromToken, obtenerReservaPorId];

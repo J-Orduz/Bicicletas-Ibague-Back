@@ -734,6 +734,143 @@ class BookingHandler {
     });
   }
 
+
+  // == MÉTODOS DE HISTORIAL DE RESERVAS ==
+  async obtenerHistorialReservasUsuario(usuarioId, limite = 10, pagina = 1) {
+    try {
+      const offset = (pagina - 1) * limite;
+
+      console.log(`📊 Obteniendo historial de reservas - Usuario: ${usuarioId}, Límite: ${limite}, Página: ${pagina}`);
+
+      // Consulta principal con joins para obtener datos relacionados
+      const { data: reservas, error, count } = await supabase
+        .from(reservaTable)
+        .select(`
+          id,
+          bicicleta_id,
+          numero_serie,
+          estado_reserva,
+          timestamp_reserva,
+          timestamp_expiracion,
+          timestamp_finalizacion,
+          motivo_finalizacion,
+          timestamp_programada,
+          timestamp_activacion,
+          tipo_reserva,
+          Bicicleta (
+            id,
+            marca,
+            tipo,
+            idEstacion,
+            Estacion (
+              id,
+              nombre
+            )
+          )
+        `, { count: 'exact' })
+        .eq('usuario_id', usuarioId)
+        .order('timestamp_reserva', { ascending: false })
+        .range(offset, offset + limite - 1);
+
+      if (error) {
+        console.error('❌ Error obteniendo historial de reservas:', error);
+        throw new Error(`Error al obtener el historial: ${error.message}`);
+      }
+
+      // Formatear los datos para la respuesta
+      const historialFormateado = reservas.map(reserva => ({
+        id: reserva.id,
+        bicicleta: {
+          id: reserva.bicicleta_id,
+          numero_serie: reserva.numero_serie,
+          marca: reserva.Bicicleta?.marca || 'N/A',
+          tipo: reserva.Bicicleta?.tipo || 'N/A',
+          estacion: {
+            id: reserva.Bicicleta?.idEstacion || null,
+            nombre: reserva.Bicicleta?.Estacion?.nombre || 'N/A'
+          }
+        },
+        estado: reserva.estado_reserva,
+        tipo: reserva.tipo_reserva || 'inmediata',
+        timestamps: {
+          reserva: reserva.timestamp_reserva,
+          expiracion: reserva.timestamp_expiracion,
+          finalizacion: reserva.timestamp_finalizacion,
+          programada: reserva.timestamp_programada,
+          activacion: reserva.timestamp_activacion
+        },
+        motivo_finalizacion: reserva.motivo_finalizacion,
+        duracion: this.calcularDuracionReserva(reserva)
+      }));
+
+      return {
+        reservas: historialFormateado,
+        paginacion: {
+          pagina_actual: pagina,
+          total_paginas: Math.ceil(count / limite),
+          total_reservas: count,
+          por_pagina: limite
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Error en obtenerHistorialReservasUsuario:', error);
+      throw error;
+    }
+  }
+
+  // Método auxiliar para calcular duración
+  calcularDuracionReserva(reserva) {
+    if (!reserva.timestamp_reserva) return null;
+
+    const inicio = new Date(reserva.timestamp_reserva);
+    const fin = reserva.timestamp_finalizacion 
+      ? new Date(reserva.timestamp_finalizacion) 
+      : new Date();
+
+    const duracionMs = fin.getTime() - inicio.getTime();
+    const minutos = Math.floor(duracionMs / (1000 * 60));
+    const horas = Math.floor(minutos / 60);
+
+    if (horas > 0) {
+      return `${horas}h ${minutos % 60}m`;
+    }
+    return `${minutos}m`;
+  }
+
+  // Método para obtener estadísticas del usuario
+  async obtenerEstadisticasUsuario(usuarioId) {
+    try {
+      const { data, error } = await supabase
+        .from(reservaTable)
+        .select('estado_reserva, timestamp_reserva')
+        .eq('usuario_id', usuarioId);
+
+      if (error) {
+        console.error('❌ Error obteniendo estadísticas:', error);
+        return null;
+      }
+
+      const estadisticas = {
+        total_reservas: data.length,
+        reservas_activas: data.filter(r => r.estado_reserva === ReservaStatus.ACTIVA).length,
+        reservas_completadas: data.filter(r => r.estado_reserva === ReservaStatus.COMPLETADA).length,
+        reservas_canceladas: data.filter(r => r.estado_reserva === ReservaStatus.CANCELADA).length,
+        reservas_programadas: data.filter(r => r.estado_reserva === ReservaStatus.PROGRAMADA).length,
+        primera_reserva: data.length > 0 
+          ? new Date(Math.min(...data.map(r => new Date(r.timestamp_reserva)))) 
+          : null
+      };
+
+      return estadisticas;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerEstadisticasUsuario:', error);
+      return null;
+    }
+  }
+
+
   // === MÉTODOS DE CONSULTA ===
 
 async obtenerReservasUsuario(usuarioId) {
