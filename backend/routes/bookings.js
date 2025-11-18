@@ -6,6 +6,7 @@ const router = Router();
 // === RUTAS DE RESERVA ===
 router.post("/reservar", bookingController.reservarBicicletaConAuth);
 router.post("/cancelar-reserva", bookingController.cancelarReservaConAuth);
+router.post("/reservar-programada", bookingController.reservarBicicletaProgramadaConAuth);
 
 // === RUTAS DE VIAJE ===
 router.post("/iniciar-viaje", bookingController.iniciarViajeConSerialConAuth);
@@ -14,5 +15,11 @@ router.post("/iniciar-viaje", bookingController.iniciarViajeConSerialConAuth);
 router.get("/reservas/usuario", bookingController.obtenerReservasUsuarioConAuth);
 router.get("/reservas/activa", bookingController.obtenerReservaActivaConAuth);
 router.get("/historial/viajes", bookingController.obtenerHistorialViajesConAuth);
+
+
+// == HISTORIAL RESERVAS Y ESTADÍSTICAS ==
+router.get("/historial", bookingController.obtenerHistorialReservasConAuth);
+router.get("/estadisticas", bookingController.obtenerEstadisticasUsuarioConAuth);
+router.get("/reserva/:id", bookingController.obtenerReservaPorIdConAuth);
 
 export default router;

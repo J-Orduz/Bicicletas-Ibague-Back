@@ -1,4 +1,3 @@
-// services/booking/events-produced.js
 export const producedEvents = {
   // Eventos de Reserva
   bicicleta_reservada: {
@@ -67,6 +66,36 @@ export const producedEvents = {
       duracion: 0,
       distancia: 0,
       costo: 0
+    }
+  },
+  reserva_programada: {
+  type: "reserva_programada",
+  data: { 
+    bikeId: "", 
+    usuarioId: "", 
+    numero_serie: "", 
+    reservaId: "",
+    timestamp_programada: "",
+    timestamp_creacion: ""
+  }
+  },
+  reserva_activada: {
+    type: "reserva_activada", 
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
+      reservaId: "",
+      timestamp_activacion: "",
+      expiracion: ""
+    }
+  },
+  reserva_fallida: {
+    type: "reserva_fallida",
+    data: {
+      reservaId: "",
+      motivo: "",
+      timestamp: ""
     }
   }
 };

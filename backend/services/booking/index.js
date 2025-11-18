@@ -1,4 +1,3 @@
-// services/booking/index.js
 import { consumedEvents } from "./events-consumed.js";
 import { producedEvents } from "./events-produced.js";
 import { eventBus } from "../../event-bus/index.js";

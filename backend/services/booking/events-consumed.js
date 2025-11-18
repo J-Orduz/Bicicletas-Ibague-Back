@@ -1,4 +1,3 @@
-// services/booking/events-consumed.js
 import { bookingHandler } from "./booking-handler.js";
 
 export const consumedEvents = {
