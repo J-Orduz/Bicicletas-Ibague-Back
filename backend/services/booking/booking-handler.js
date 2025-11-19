@@ -398,7 +398,7 @@ class BookingHandler {
         return;
       }
 
-      if (bicicleta.estado !== BikeStatus.DISPONIBLE) {
+      if (bicicleta.estado !== BikeStatus.RESERVADA) {
         await this.marcarReservaComoFallida(reservaId, `Bicicleta no disponible. Estado: ${bicicleta.estado}`);
         return;
       }
@@ -418,23 +418,19 @@ class BookingHandler {
         throw new Error(`Error activando reserva: ${updateError.message}`);
       }
 
-      // 4. Actualizar bicicleta a RESERVADA
-      const { data: bicicletaActualizada, error: bikeUpdateError } = await supabase
+       // NO actualizar bicicleta (ya está en estado RESERVADA)
+      // 4. Solo actualizar el timestamp de reserva para reflejar la activación
+      const { error: bikeUpdateError } = await supabase
         .from(bikeTable)
         .update({ 
-          estado: BikeStatus.RESERVADA,
-          reserva_usuario_id: reserva.usuario_id,
-          reserva_timestamp: new Date().toISOString(),
-          reserva_expiracion: reserva.timestamp_expiracion
+          reserva_timestamp: new Date().toISOString() // Actualizar timestamp de activación
         })
-        .eq('id', reserva.bicicleta_id)
-        .select()
-        .single();
+        .eq('id', reserva.bicicleta_id);
 
-      if (bikeUpdateError) {
-        await this.marcarReservaComoFallida(reservaId, 'Error al reservar bicicleta');
-        return;
-      }
+        if (bikeUpdateError) {
+          await this.marcarReservaComoFallida(reservaId, 'Error al reservar bicicleta');
+          return;
+        }
 
       // 5. Publicar evento de activación
       await eventBus.publish(CHANNELS.RESERVAS, {
