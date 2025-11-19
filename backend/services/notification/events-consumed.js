@@ -1,0 +1,1 @@
+// Eventos que consume (UsuarioRegistrado, PagoConfirmado, etc.)
