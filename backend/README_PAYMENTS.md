@@ -122,6 +122,118 @@ Payloads de ejemplo (modo mock):
 
 ---
 
+# Validacion Tarjeta — Documentación (SIS-5 / HU-04)
+
+---
+
+**Paquete de handoff (archivos incluidos en el repo)**
+
+- `backend/examples/payment.html` — ejemplo mínimo con Stripe Elements (client-side tokenization + confirm) para pruebas locales.
+- `backend/mock/postman_collection.json` — colección Postman con requests listos: `validate-card` (token y PAN mock), `create-payment-intent`, `webhook`, `get paymentIntent`.
+
+**Cómo usar los artefactos (rápido)**
+
+1. Arrancar mock server (opcional, para pruebas sin Stripe):
+
+```powershell
+node backend/mock/mock-server.js
+```
+
+2. Arrancar backend (en otra terminal):
+
+```powershell
+# Si quieres solo modo mock temporal en la sesión
+$env:PAYMENT_MODE = 'mock'; $env:PAYMENT_MOCK_URL = 'http://localhost:8080'; node backend/server.js
+# O si tienes .env configurado con STRIPE_* para sandbox
+node backend/server.js
+```
+
+3. Importa `backend/mock/postman_collection.json` en Postman y ajusta `http://localhost:3000` como base.
+
+4. Abrir `backend/examples/payment.html` en un navegador (sirve desde el servidor o abriéndolo localmente) para probar el flujo con Stripe Elements. Si lo sirves desde el servidor, coloca el archivo en un static host o abre directamente con Live Server.
+
+**Notas rápidas para el frontend**
+
+- Usar `GET /api/config/stripe-pk` para obtener `STRIPE_PUBLISHABLE_KEY`.
+- Flujo preferido: `create-payment-intent` → `stripe.confirmCardPayment(client_secret, { payment_method: { card } })`.
+- Para pruebas rápidas sin frontend: usa `POST /api/payments/validate-card` enviando `token: "tok_visa"` en el body.
+
+### Endpoints adicionales (implementados en esta rama)
+
+- POST `/api/payments/validate-card`
+  - Propósito: Validar una tarjeta o tokenizar/validar un `token` recibido desde el cliente.
+  - Body admitido (usar `token` cuando sea posible):
+
+```json
+{ "token": "tok_visa", "metadata": { "bookingId": "abc123" } }
+```
+
+o (solo en `mock` o si tu cuenta permite raw-pan):
+
+```json
+{
+  "number": "4242424242424242",
+  "exp_month": "12",
+  "exp_year": "2026",
+  "cvc": "123"
+}
+```
+
+- Responses:
+
+  - 200: `{ "valid": true, "result": { ... } }` (token o objeto devuelto)
+  - 400: validación local fallida `{ "valid": false, "errors": [ { code, message } ] }`
+  - 402/400: provider error (mapeado) `{ "valid": false, "error": "CARD_DECLINED", "message": "La tarjeta fue rechazada." }`
+
+- POST `/api/payments/confirm-with-token`
+  - Propósito: Permitir al backend crear y confirmar un PaymentIntent usando un `token` o `payment_method` enviado por el frontend (server-side confirm).
+  - Body ejemplo:
+
+```json
+{
+  "token": "pm_1Hxxxxx",
+  "amount": 500,
+  "currency": "usd",
+  "metadata": { "bookingId": "abc123" }
+}
+```
+
+- Responses:
+  - 200: `{ "paymentIntent": { id, client_secret, status, ... } }` (en `mock` devuelve un intent simulado con `status: 'succeeded'`).
+  - 400/402: `{ "error": "CARD_DECLINED", "message": "..." }` (errores mapeados a códigos amigables).
+
+Notas:
+
+- Siempre preferir tokenización client-side (Stripe Elements / Payment Methods). El endpoint `confirm-with-token` está pensado para flujos donde el frontend ya genera el `payment_method` o token.
+
+---
+
+### Mapeo de errores y contratos
+
+El backend normaliza errores comunes de Stripe para que el frontend pueda actuar sin parsear mensajes crudos. Algunos códigos devueltos son:
+
+- `CARD_DECLINED` — la tarjeta fue rechazada.
+- `INCORRECT_CVC` — CVC incorrecto.
+- `EXPIRED_CARD` — tarjeta expirada.
+- `INVALID_NUMBER` — número inválido (Luhn / formato).
+- `PAYMENT_ERROR` — error genérico del proveedor.
+
+Cada error viene con `message` legible para mostrar en UI y un código `http` apropiado.
+
+---
+
+### Idempotencia de webhooks
+
+Para evitar reprocesar el mismo evento (reintentos de Stripe), el webhook implementa idempotencia básica usando Upstash Redis:
+
+- Se guarda una key `payment:webhook:<eventId>` (o un hash del payload cuando no hay `event.id`).
+- Si la key ya existe, el webhook se marca como `skipped` y devuelve `{ received: true, skipped: true }`.
+- La key tiene TTL (24h) para mantener protección contra reenvíos inmediatos.
+
+Esto evita publicar el mismo `PagoConfirmado` dos veces en el `CHANNELS.PAGOS`.
+
+---
+
 ## Event-bus (mapa de eventos)
 
 - Canal: `CHANNELS.PAGOS` (valor: `pagos`)
@@ -195,20 +307,3 @@ curl -X POST http://localhost:3000/api/payments/create-payment-intent \
   - Para mock: `Mock payment succeeded`.
 
 ---
-
-## Próximos pasos recomendados (pendientes / opcionales)
-
-- Implementar `PagoReembolsado` en el webhook handler (map `charge.refunded`).
-- Implementar consumer en `services/booking` que escuche `CHANNELS.PAGOS` y marque reservas como pagadas/pendientes.
-- Añadir idempotencia/dedupe (Upstash/Redis o DB) para webhooks.
-- Generar `examples/payment.html` con Stripe.js + Elements como ejemplo para frontend.
-- Crear colección Postman con requests preconfigurados (ya listados en este archivo) y subir al repo.
-- Documentar en el README principal los pasos de despliegue y cómo añadir claves en entornos dev/staging.
-
----
-
-Si quieres, puedo crear ahora la colección Postman y el ejemplo `examples/payment.html`, o implementar el consumer en `services/booking`. Dime cuál prefieres que haga siguiente.
-
----
-
-Archivo generado automáticamente por el asistente para la tarea SIS-22 / HU-21.
