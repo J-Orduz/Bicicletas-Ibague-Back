@@ -2,6 +2,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Cargar variables de entorno
 dotenv.config();
@@ -70,6 +72,13 @@ import configRoutes from "./routes/config.js";
 import { reservaCleanupService } from "./services/booking/reserva-cleanup.js";
 
 // Usar rutas
+// Servir ejemplos estáticos (ej. /examples/payment.html) desde el mismo origen
+// Use path relative to this file so it works no matter the current working dir
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const examplesDir = path.join(__dirname, "examples");
+app.use("/examples", express.static(examplesDir));
+
 app.use("/api/users", userRoutes);
 app.use("/api/bikes", bikeRoutes); ///bicicletas
 app.use("/api/booking", bookingRoutes);

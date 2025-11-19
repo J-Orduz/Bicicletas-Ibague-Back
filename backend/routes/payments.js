@@ -10,6 +10,16 @@ router.post(
   paymentController.createPaymentIntent
 );
 
+// Validate card details (Luhn + optional Stripe/mock validation)
+router.post("/validate-card", express.json(), paymentController.validateCard);
+
+// Confirm a payment using a token/payment_method (server-side confirm)
+router.post(
+  "/confirm-with-token",
+  express.json(),
+  paymentController.confirmWithToken
+);
+
 // Webhook endpoint (Stripe requires raw body; for mock mode it's ok)
 router.post(
   "/webhook",
