@@ -133,7 +133,7 @@ class BookingHandler {
     try {
       console.log(`❌ Solicitud de cancelación de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
       
-      // 1. Verificar que la bicicleta existe y está reservada
+      // 1. Verificar que la bicicleta existe y está reservada POR ESTE USUARIO
       const { data: bicicleta, error: bikeError } = await supabase
         .from(bikeTable)
         .select("*")
@@ -144,6 +144,9 @@ class BookingHandler {
         throw new Error('Bicicleta no encontrada');
       }
 
+      console.log(`🚲 Estado bicicleta: ${bicicleta.estado}, Usuario reserva: ${bicicleta.reserva_usuario_id}`);
+
+      // ✅ VERIFICACIÓN SIMPLIFICADA: Solo importa que esté reservada por este usuario
       if (bicicleta.estado !== BikeStatus.RESERVADA) {
         throw new Error(`La bicicleta no está reservada. Estado actual: ${bicicleta.estado}`);
       }
@@ -152,36 +155,44 @@ class BookingHandler {
         throw new Error('No puedes cancelar una reserva que no te pertenece');
       }
 
-      // 2. Buscar y actualizar la reserva activa
-      const { data: reservaActiva, error: reservaError } = await supabase
+      // 2. Buscar CUALQUIER reserva reciente para esta bicicleta y usuario (sin importar estado)
+      const { data: reserva, error: reservaError } = await supabase
         .from(reservaTable)
         .select('*')
         .eq('bicicleta_id', bikeId)
         .eq('usuario_id', usuarioId)
-        .eq('estado_reserva', ReservaStatus.ACTIVA)
+        .order('timestamp_reserva', { ascending: false })
+        .limit(1)
         .single();
 
-      if (reservaError || !reservaActiva) {
-        throw new Error('No se encontró una reserva activa para esta bicicleta');
+      if (reservaError || !reserva) {
+        console.log('⚠️ No se encontró registro de reserva, pero la bicicleta está reservada. Procediendo con cancelación...');
+        // Continuamos igual, porque la bicicleta SÍ está reservada por este usuario
       }
 
-      // 3. Actualizar reserva a "cancelada"
-      const { data: reservaActualizada, error: updateReservaError } = await supabase
-        .from(reservaTable)
-        .update({
-          estado_reserva: ReservaStatus.CANCELADA,
-          timestamp_finalizacion: new Date().toISOString(),
-          motivo_finalizacion: MotivoFinalizacion.CANCELACION_USUARIO
-        })
-        .eq('id', reservaActiva.id)
-        .select()
-        .single();
+      // 3. Si existe reserva, actualizarla a "cancelada"
+      let reservaActualizada = null;
+      if (reserva) {
+        const { data: reservaUpdate, error: updateReservaError } = await supabase
+          .from(reservaTable)
+          .update({
+            estado_reserva: ReservaStatus.CANCELADA,
+            timestamp_finalizacion: new Date().toISOString(),
+            motivo_finalizacion: MotivoFinalizacion.CANCELACION_USUARIO
+          })
+          .eq('id', reserva.id)
+          .select()
+          .single();
 
-      if (updateReservaError) {
-        throw new Error(`Error al actualizar reserva: ${updateReservaError.message}`);
+        if (updateReservaError) {
+          console.error('❌ Error actualizando reserva:', updateReservaError);
+          // No lanzamos error aquí, porque lo importante es liberar la bicicleta
+        } else {
+          reservaActualizada = reservaUpdate;
+        }
       }
 
-      // 4. Actualizar bicicleta a "Disponible"
+      // 4. ACTUALIZAR BICICLETA A "DISPONIBLE" (esto es lo más importante)
       const { data: bicicletaActualizada, error: updateBiciError } = await supabase
         .from(bikeTable)
         .update({ 
@@ -205,7 +216,7 @@ class BookingHandler {
           bikeId: bicicleta.id,
           usuarioId: usuarioId,
           numero_serie: bicicleta.numero_serie,
-          reservaId: reservaActiva.id,
+          reservaId: reserva?.id || 'sin_registro',
           timestamp: new Date().toISOString(),
           motivo: "cancelacion_manual"
         }
@@ -238,12 +249,13 @@ class BookingHandler {
         throw new Error('La fecha de reserva debe ser futura');
       }
 
-      // ✅ Verificar que no tenga NINGUNA reserva activa o programada
+      // Verificar que no tenga NINGUNA reserva activa o programada
       const tieneReservaActiva = await this.verificarReservaActivaExistente(usuarioId);
       if (tieneReservaActiva) {
         throw new Error('Ya tienes una reserva activa o programada. Debes cancelarla o completarla antes de hacer una nueva reserva.');
       }
-      // 1. Verificar que la bicicleta existe
+
+      // 1. Verificar que la bicicleta existe Y ESTÁ DISPONIBLE
       const { data: bicicleta, error: bikeError } = await supabase
         .from(bikeTable)
         .select("*")
@@ -252,6 +264,11 @@ class BookingHandler {
       
       if (bikeError || !bicicleta) {
         throw new Error('Bicicleta no encontrada');
+      }
+
+      // ✅ VERIFICAR QUE LA BICICLETA ESTÉ DISPONIBLE
+      if (bicicleta.estado !== BikeStatus.DISPONIBLE) {
+        throw new Error(`La bicicleta no está disponible para reservar. Estado actual: ${bicicleta.estado}`);
       }
 
       // 2. Calcular timestamps (la reserva se activa en la fecha programada)
@@ -265,11 +282,11 @@ class BookingHandler {
           usuario_id: usuarioId,
           bicicleta_id: bikeId,
           numero_serie: bicicleta.numero_serie,
-          estado_reserva: ReservaStatus.PROGRAMADA, // ✅ NUEVO ESTADO
+          estado_reserva: ReservaStatus.PROGRAMADA,
           timestamp_reserva: ahora.toISOString(),
-          timestamp_programada: timestampActivacion, // ✅ Fecha programada
+          timestamp_programada: timestampActivacion,
           timestamp_expiracion: expiracion.toISOString(),
-          tipo_reserva: 'programada' // ✅ Tipo de reserva
+          tipo_reserva: 'programada'
         })
         .select()
         .single();
@@ -278,10 +295,29 @@ class BookingHandler {
         throw new Error(`Error al crear reserva programada: ${reservaError.message}`);
       }
 
-      // 4. Programar la activación de la reserva
+      // 4. ACTUALIZAR BICICLETA A "RESERVADA" INMEDIATAMENTE
+      const { data: bicicletaActualizada, error: updateBiciError } = await supabase
+        .from(bikeTable)
+        .update({ 
+          estado: BikeStatus.RESERVADA,
+          reserva_usuario_id: usuarioId,
+          reserva_timestamp: ahora.toISOString(),
+          reserva_expiracion: expiracion.toISOString()
+        })
+        .eq("id", bikeId)
+        .select()
+        .single();
+
+      if (updateBiciError) {
+        // Si falla la actualización de la bicicleta, eliminar la reserva creada
+        await supabase.from(reservaTable).delete().eq('id', nuevaReserva.id);
+        throw new Error(`Error al reservar bicicleta: ${updateBiciError.message}`);
+      }
+
+      // 5. Programar la activación de la reserva
       this.programarActivacionReserva(nuevaReserva.id, fechaProgramada);
 
-      // 5. Publicar evento de reserva programada
+      // 6. Publicar evento de reserva programada
       await eventBus.publish(CHANNELS.RESERVAS, {
         type: "reserva_programada",
         data: {
@@ -290,17 +326,20 @@ class BookingHandler {
           numero_serie: bicicleta.numero_serie,
           reservaId: nuevaReserva.id,
           timestamp_programada: timestampActivacion,
-          timestamp_creacion: ahora.toISOString()
+          timestamp_creacion: ahora.toISOString(),
+          estado_bicicleta: BikeStatus.RESERVADA 
         }
       });
 
       console.log(`✅ Reserva programada exitosamente: ${bicicleta.numero_serie} para ${fechaProgramada}`);
+      console.log(`🚲 Bicicleta actualizada a estado: ${BikeStatus.RESERVADA}`);
       
       return {
         success: true,
         reserva: nuevaReserva,
+        bicicleta: bicicletaActualizada, 
         tiempo_restante: fechaProgramada.getTime() - ahora.getTime(),
-        mensaje: `Reserva programada exitosamente para ${fechaProgramada.toLocaleString()}`
+        mensaje: `Reserva programada exitosamente para ${fechaProgramada.toLocaleString()}. La bicicleta ya está reservada.`
       };
 
     } catch (error) {
@@ -903,6 +942,8 @@ async obtenerReservasUsuario(usuarioId) {
       timestamp_reserva,
       timestamp_expiracion,
       timestamp_finalizacion,
+      timestamp_programada,
+      timestamp_activacion,
       motivo_finalizacion,
       Bicicleta (
         id,
