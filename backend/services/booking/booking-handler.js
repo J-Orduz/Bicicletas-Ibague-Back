@@ -857,6 +857,7 @@ class BookingHandler {
         reservas_completadas: data.filter(r => r.estado_reserva === ReservaStatus.COMPLETADA).length,
         reservas_canceladas: data.filter(r => r.estado_reserva === ReservaStatus.CANCELADA).length,
         reservas_programadas: data.filter(r => r.estado_reserva === ReservaStatus.PROGRAMADA).length,
+        reservas_expiradas: data.filter(r => r.estado_reserva === ReservaStatus.EXPIRADA).length,
         primera_reserva: data.length > 0 
           ? new Date(Math.min(...data.map(r => new Date(r.timestamp_reserva)))) 
           : null
