@@ -9,12 +9,26 @@ import crypto from "crypto";
 
 export async function createPaymentIntent(req, res, next) {
   try {
-    const { amount, currency = "usd", metadata } = req.body;
-    if (!amount)
-      return res.status(400).json({ error: "Missing amount (in cents)" });
+    const { amount, currency = "cop", metadata } = req.body;
+    if (amount === undefined || amount === null)
+      return res
+        .status(400)
+        .json({ error: "Missing amount (in COP, whole pesos)" });
+
+    // Accept amounts in whole COP (pesos) from the client and convert to
+    // the smallest currency unit (centavos) for Stripe which expects amounts
+    // in the currency's minor unit. This keeps the client simple: send 5000
+    // for 5000 COP and the server multiplies by 100.
+    let amountForGateway = amount;
+    if (String(currency).toLowerCase() === "cop") {
+      const numeric = Number(amount);
+      if (isNaN(numeric))
+        return res.status(400).json({ error: "Invalid amount value" });
+      amountForGateway = Math.round(numeric * 100);
+    }
 
     const pi = await paymentHandler.createPaymentIntent({
-      amount,
+      amount: amountForGateway,
       currency,
       metadata,
     });
@@ -129,15 +143,26 @@ function mapStripeError(err) {
 
 export async function confirmWithToken(req, res, next) {
   try {
-    const { token, amount, currency = "usd", metadata = {} } = req.body;
+    const { token, amount, currency = "cop", metadata = {} } = req.body;
     if (!token) return res.status(400).json({ error: "Missing token" });
-    if (!amount)
-      return res.status(400).json({ error: "Missing amount (in cents)" });
+    if (amount === undefined || amount === null)
+      return res
+        .status(400)
+        .json({ error: "Missing amount (in COP, whole pesos)" });
+
+    // Convert whole COP pesos to centavos for Stripe
+    let amountForGateway = amount;
+    if (String(currency).toLowerCase() === "cop") {
+      const numeric = Number(amount);
+      if (isNaN(numeric))
+        return res.status(400).json({ error: "Invalid amount value" });
+      amountForGateway = Math.round(numeric * 100);
+    }
 
     try {
       const pi = await paymentHandler.confirmWithToken({
         token,
-        amount,
+        amount: amountForGateway,
         currency,
         metadata,
       });

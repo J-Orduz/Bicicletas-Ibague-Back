@@ -16,7 +16,7 @@ export const initPaymentHandler = () => {
 
 export async function createPaymentIntent({
   amount,
-  currency = "usd",
+  currency = "cop",
   metadata = {},
 }) {
   if (MODE === "mock") {
@@ -123,7 +123,7 @@ export async function validateCard({
 export async function confirmWithToken({
   token,
   amount,
-  currency = "usd",
+  currency = "cop",
   metadata = {},
 }) {
   if (MODE === "mock") {

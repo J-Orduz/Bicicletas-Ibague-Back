@@ -47,7 +47,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"amount\": 500,\n  \"currency\": \"usd\",\n  \"metadata\": { \"bookingId\": \"abc123\" }\n}"
+          "raw": "{\n  \"amount\": 5000,\n  \"currency\": \"cop\",\n  \"metadata\": { \"bookingId\": \"abc123\" }\n}"
         },
         "url": {
           "raw": "http://localhost:3000/api/payments/create-payment-intent",
@@ -65,7 +65,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": { \"object\": { \"id\": \"pi_mock_1\", \"amount\": 500, \"currency\": \"usd\", \"metadata\": { \"bookingId\": \"abc123\" } } }\n}"
+          "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": { \"object\": { \"id\": \"pi_mock_1\", \"amount\": 500000, \"currency\": \"cop\", \"metadata\": { \"bookingId\": \"abc123\" } } }\n}"
         },
         "url": {
           "raw": "http://localhost:3000/api/payments/webhook",
