@@ -29,32 +29,35 @@ async function registrarTelemetria(telemetria) {
   if (error) throw Error(error.message);
 }
 
-export const bicicletaService = {
-  registrarTelemetria,
-  listarEstaciones,
-  listarBicicletasPorEstacion,
-};
-
-/*export const obtenerTelemetriaActual = async (idBici) => {
+export const obtenerTelemetriaActual = async (idBici) => {
   const { data, error } = await supabase
     .from("Telemetria")
     .select("*")
     .eq("IDbicicleta", idBici)
-    .order("fechaUltimaConsulta", { ascending: false })
+    .order("fechaConsulta", { ascending: false })
     .limit(1);     // ← la más reciente
 
-  if (error) throw error;
+  console.log(`data: ${JSON.stringify(data)}`);
+  if (error) throw Error(error.message);
   return data[0] ?? null;
 };
 
-
+// TODO: limitar histórico hasta el inicio del ultimo viaje
 export const obtenerTelemetriaHistorico = async (idBici) => {
   const { data, error } = await supabase
     .from("Telemetria")
     .select("*")
     .eq("IDbicicleta", idBici)
-    .order("fechaUltimaConsulta", { ascending: false });
+    .order("fechaConsulta", { ascending: false });
 
-  if (error) throw error;
+  if (error) throw Error(error.message);
   return data;
-};*/
+};
+
+export const bicicletaService = {
+  registrarTelemetria,
+  listarEstaciones,
+  listarBicicletasPorEstacion,
+  obtenerTelemetriaActual,
+  obtenerTelemetriaHistorico
+};

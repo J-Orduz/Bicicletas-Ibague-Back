@@ -276,8 +276,8 @@ export const registrarBicicletaConAuth = [extractUserFromToken, registrarBicicle
 export const actualizarPosicionConAuth = [extractUserFromToken, actualizarPosicion];
 export const reportarAbandonadaConAuth = [extractUserFromToken, reportarAbandonada];
 
-// === RUTAS DE TELEMETRÍA (pendientes de implementar) ===
-/*
+// === RUTAS DE TELEMETRÍA (implementando) ===
+
 export const getTelemetriaActual = async (req, res) => {
   const data = await bicicletaService.obtenerTelemetriaActual(req.params.id);
   res.json(data);
@@ -287,4 +287,3 @@ export const getTelemetriaHistorico = async (req, res) => {
   const data = await bicicletaService.obtenerTelemetriaHistorico(req.params.id);
   res.json(data);
 };
-*/
