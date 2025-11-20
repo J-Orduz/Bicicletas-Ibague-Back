@@ -17,6 +17,20 @@ import { BikeStatus } from "../services/bike/bike-handler";
 client.on('connect', () => {
 	console.log(`Bicicleta IoT #${id} reportando telemetría`);
 	client.subscribe(`bikes/${id}/unlock`, () => {
+		console.log(`Bicicleta ${id} desbloqueada`);
 		data.estado = BikeStatus.EN_USO;
 	});
+});
+
+client.on("message", (topic, message) => {
+  const command = JSON.parse(message.toString());
+  console.log(`[BIKE] Command received:`, command);
+
+  if (command.action === "unlock") {
+    console.log(`[BIKE] Bike ${BIKE_ID} unlocking...`);
+    client.publish(
+      `bikes/${BIKE_ID}/status`,
+      JSON.stringify({ unlocked: true, timestamp: Date.now() })
+    );
+  }
 });
