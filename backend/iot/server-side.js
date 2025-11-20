@@ -7,6 +7,8 @@ export const client = mqtt.connect('mqtt://localhost:1883');
 
 client.on('connect', () => {
   console.log("Successful connection to the mqtt broker");
+
+  // el dispositivo se suscribe a los canales despues de conectarse exitosamente al broker
   client.subscribe('bikes/+/telemetry', async (data) => {
     await bicicletaService.registrarTelemetria(data);
   });

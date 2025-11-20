@@ -15,7 +15,7 @@ router.get("/serial/:serialNumber", bicicletaController.getBicicletaBySerial);
 // router.put("/:id/posicion", bicicletaController.actualizarPosicionConAuth);
 // router.post("/:id/reportar-abandonada", bicicletaController.reportarAbandonadaConAuth);
 
-//router.get("/:id/telemetria", bicicletaController.getTelemetriaActual);
-//router.get("/:id/telemetria/historico", bicicletaController.getTelemetriaHistorico);
+router.get("/:id/telemetria", bicicletaController.getTelemetriaActual);
+router.get("/:id/telemetria/historico", bicicletaController.getTelemetriaHistorico);
 
 export default router;
