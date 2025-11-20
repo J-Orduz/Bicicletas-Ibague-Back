@@ -11,9 +11,9 @@ const listarEstaciones = async () => {
 
 const listarBicicletasPorEstacion = async (idEstacion) => {
     const { data, error } = await supabase
-        .from("Bicicleta")
-        .select("*")
-        .eq("idEstacion", idEstacion);
+      .from("Bicicleta")
+      .select("*")
+      .eq("idEstacion", idEstacion);
     console.log("ERROR:", error);
     console.log("DATA:", data);
 
@@ -22,11 +22,18 @@ const listarBicicletasPorEstacion = async (idEstacion) => {
 };
 
 
-export const bicicletaService = {
-    listarEstaciones,
-    listarBicicletasPorEstacion,
-};
+async function registrarTelemetria(telemetria) {
+  const { _, error } = await supabase
+    .from("Telemetria")
+    .insert(telemetria);
+  if (error) throw Error(error.message);
+}
 
+export const bicicletaService = {
+  registrarTelemetria,
+  listarEstaciones,
+  listarBicicletasPorEstacion,
+};
 
 /*export const obtenerTelemetriaActual = async (idBici) => {
   const { data, error } = await supabase

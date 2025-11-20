@@ -204,6 +204,7 @@ export const registrarBicicleta = async (req, res) => {
   }
 };
 
+// the table "Bicicleta" doesn't have a position field, this will not work.
 export const actualizarPosicion = async (req, res) => {
   try {
     const bikeId = req.params.id;
