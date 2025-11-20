@@ -16,7 +16,7 @@
     <div>
       <form id="payment-form">
         <div id="card-element"></div>
-        <button id="pay">Pay 5.00 USD</button>
+        <button id="pay">Pay 5,000 COP</button>
       </form>
       <div id="message" role="status" style="margin-top:12px;color:#b00"></div>
     </div>
@@ -48,11 +48,12 @@
           e.preventDefault();
           messageEl.textContent = '';
 
-          // create payment intent on backend (amount in cents)
+          // create payment intent on backend (amount in whole COP; server converts to centavos)
           const piResp = await fetch(BACKEND + '/api/payments/create-payment-intent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: 500, currency: 'usd', metadata: { bookingId: 'example-1' } })
+            // amount in whole COP (pesos) — server will convert to centavos
+            body: JSON.stringify({ amount: 5000, currency: 'cop', metadata: { bookingId: 'example-1' } })
           });
 
           if (!piResp.ok) {

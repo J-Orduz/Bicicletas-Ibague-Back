@@ -15,7 +15,7 @@ function genId(prefix = "pi_mock_") {
 }
 
 app.post("/payment-intent", (req, res) => {
-  const { amount, currency = "usd", metadata = {} } = req.body || {};
+  const { amount, currency = "cop", metadata = {} } = req.body || {};
   if (!amount) return res.status(400).json({ error: "Missing amount" });
   const id = genId();
   const client_secret = id + "_secret_mock";
@@ -51,13 +51,11 @@ app.post("/validate-card", (req, res) => {
   if (clean === "4242424242424242") {
     return res.json({ valid: true, id: genId("cardtok_") });
   }
-  return res
-    .status(402)
-    .json({
-      valid: false,
-      error: "card_declined",
-      message: "Mock: card declined",
-    });
+  return res.status(402).json({
+    valid: false,
+    error: "card_declined",
+    message: "Mock: card declined",
+  });
 });
 
 app.post("/webhook", (req, res) => {

@@ -39,8 +39,8 @@ Base URL: `http://localhost:3000`
 
 ```json
 {
-  "amount": 500,
-  "currency": "usd",
+  "amount": 5000,
+  "currency": "cop",
   "metadata": { "bookingId": "abc123" }
 }
 ```
@@ -48,7 +48,7 @@ Base URL: `http://localhost:3000`
 - Response esperado (sandbox - Stripe):
 
 ```json
-{ "paymentIntent": { "id": "pi_...", "client_secret": "pi_..._secret_...", "amount":500, ... } }
+{ "paymentIntent": { "id": "pi_...", "client_secret": "pi_..._secret_...", "amount":500000, ... } }
 ```
 
 3. Webhook (Stripe o mock)
@@ -68,8 +68,8 @@ Payloads de ejemplo (modo mock):
   "data": {
     "object": {
       "id": "pi_mock_1",
-      "amount": 500,
-      "currency": "usd",
+      "amount": 5000,
+      "currency": "cop",
       "metadata": { "bookingId": "abc123" }
     }
   }
@@ -84,8 +84,8 @@ Payloads de ejemplo (modo mock):
   "data": {
     "object": {
       "id": "pi_mock_fail_1",
-      "amount": 500,
-      "currency": "usd",
+      "amount": 5000,
+      "currency": "cop",
       "metadata": { "bookingId": "abc123" },
       "last_payment_error": { "message": "Card declined" }
     }
@@ -101,11 +101,11 @@ Payloads de ejemplo (modo mock):
   "data": {
     "object": {
       "id": "ch_mock_1",
-      "amount": 500,
-      "currency": "usd",
+      "amount": 5000,
+      "currency": "cop",
       "payment_intent": "pi_mock_1",
       "metadata": { "bookingId": "abc123" },
-      "refunds": { "data": [{ "id": "re_mock_1", "amount": 500 }] }
+      "refunds": { "data": [{ "id": "re_mock_1", "amount": 500000 }] }
     }
   }
 }
@@ -192,8 +192,8 @@ o (solo en `mock` o si tu cuenta permite raw-pan):
 ```json
 {
   "token": "pm_1Hxxxxx",
-  "amount": 500,
-  "currency": "usd",
+  "amount": 5000,
+  "currency": "cop",
   "metadata": { "bookingId": "abc123" }
 }
 ```
@@ -275,7 +275,7 @@ C) Crear PaymentIntent desde front/backend:
 ```powershell
 curl -X POST http://localhost:3000/api/payments/create-payment-intent \
   -H "Content-Type: application/json" \
-  -d '{"amount":500,"currency":"usd","metadata":{"bookingId":"abc123"}}'
+  -d '{"amount":5000,"currency":"cop","metadata":{"bookingId":"abc123"}}'
 ```
 
 ---
