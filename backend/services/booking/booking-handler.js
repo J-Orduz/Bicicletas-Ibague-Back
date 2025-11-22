@@ -33,10 +33,84 @@ class BookingHandler {
 
   // === MÉTODOS DE RESERVA ===
 
+  async verificarUsuarioPuedeReservar(usuarioId) {
+    try {
+      console.log(`🔍 Verificando estado del usuario para reserva: ${usuarioId}`);
+      
+      // 1. Verificar saldo en la tabla profiles
+      const { data: perfil, error: perfilError } = await supabase
+        .from('profiles')
+        .select('saldo')
+        .eq('id', usuarioId)
+        .single();
+
+      if (perfilError) {
+        console.error('❌ Error consultando perfil del usuario:', perfilError);
+        throw new Error('Error al verificar el estado de la cuenta');
+      }
+
+      if (!perfil) {
+        throw new Error('Perfil de usuario no encontrado');
+      }
+
+      // Verificar si el saldo es negativo
+      if (perfil.saldo < 0) {
+        console.log(`❌ Usuario ${usuarioId} tiene saldo negativo: ${perfil.saldo}`);
+        return {
+          puedeReservar: false,
+          motivo: 'SALDO_NEGATIVO',
+          detalles: `Saldo actual: COP $${perfil.saldo}. Recargue su cuenta para realizar reservas.`
+        };
+      }
+
+      // 2. Verificar multas pendientes
+      const { data: multasPendientes, error: multasError } = await supabase
+        .from('multas')
+        .select('id, motivo, monto, fecha_creacion')
+        .eq('usuario_id', usuarioId)
+        .eq('estado', 'pendiente');
+
+      if (multasError) {
+        console.error('❌ Error consultando multas del usuario:', multasError);
+        throw new Error('Error al verificar el estado de multas');
+      }
+
+      if (multasPendientes && multasPendientes.length > 0) {
+        console.log(`❌ Usuario ${usuarioId} tiene ${multasPendientes.length} multa(s) pendiente(s)`);
+        const totalMultas = multasPendientes.reduce((sum, multa) => sum + multa.monto, 0);
+        
+        return {
+          puedeReservar: false,
+          motivo: 'MULTAS_PENDIENTES',
+          detalles: `Tiene ${multasPendientes.length} multa(s) pendiente(s) por un total de COP $${totalMultas}. Regularice su situación para realizar reservas.`,
+          multas: multasPendientes
+        };
+      }
+
+      // 3. Si pasa todas las verificaciones
+      console.log(`✅ Usuario ${usuarioId} puede realizar reservas. Saldo: COP $${perfil.saldo}`);
+      return {
+        puedeReservar: true,
+        saldo: perfil.saldo,
+        multasPendientes: 0
+      };
+
+    } catch (error) {
+      console.error('❌ Error en verificarUsuarioPuedeReservar:', error);
+      throw error;
+    }
+  }
+
+
   async reservarBicicleta(bikeId, usuarioId) {
     try {
       console.log(`📋 Solicitud de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
       
+      const estadoUsuario = await this.verificarUsuarioPuedeReservar(usuarioId);
+      if (!estadoUsuario.puedeReservar) {
+        throw new Error(`No puede realizar reservas: ${estadoUsuario.detalles}`);
+      }
+
       // Verificar que el usuario no tenga ya una reserva activa O programada
       const tieneReservaActiva = await this.verificarReservaActivaExistente(usuarioId);
       if (tieneReservaActiva) {
@@ -241,6 +315,12 @@ class BookingHandler {
     try {
       console.log(`📅 Solicitud de reserva programada - BikeID: ${bikeId}, Usuario: ${usuarioId}, Fecha: ${fechaHoraProgramada}`);
       
+      // Verificar si el usuario puede reservar
+      const estadoUsuario = await this.verificarUsuarioPuedeReservar(usuarioId);
+      if (!estadoUsuario.puedeReservar) {
+        throw new Error(`No puede realizar reservas: ${estadoUsuario.detalles}`);
+      }
+
       // Validar fecha futura
       const fechaProgramada = new Date(fechaHoraProgramada);
       const ahora = new Date();
