@@ -611,6 +611,7 @@ class BookingHandler {
       if (bicicleta.id !== bikeId) {
         throw new Error(`El número de serie ${serialNumber} no corresponde a la bicicleta seleccionada`);
       }
+      
 
       const tieneReservaActiva = await this.verificarReservaActivaUsuario(bikeId, usuarioId);
       if (!tieneReservaActiva) {
@@ -621,6 +622,71 @@ class BookingHandler {
           bicicleta.estado !== BikeStatus.RESERVADA) {
         throw new Error(`La bicicleta no está disponible. Estado actual: ${bicicleta.estado}`);
       }
+
+      // VERIFICAR Y USAR SUSCRIPCIÓN 
+      let usoSubscripcion = false;
+      let suscripcionActualizada = null;
+
+      // Verificar si el usuario tiene suscripción activa
+      const { data: suscripcion, error: errorSuscripcion } = await supabase
+        .from('suscripciones')
+        .select('*')
+        .eq('usuario_id', usuarioId)
+        .in('estado', ['activa', 'sin_viajes'])
+        .order('fecha_inicio', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!errorSuscripcion && suscripcion) {
+        // Verificar que la suscripción no esté vencida
+        const ahora = new Date();
+        const vencimiento = new Date(suscripcion.fecha_vencimiento);
+        
+        if (ahora <= vencimiento && suscripcion.viajes_disponibles > 0) {
+          console.log(`🎫 Usuario tiene suscripción activa. Viajes disponibles: ${suscripcion.viajes_disponibles}`);
+          
+          // Calcular nuevos valores
+          const nuevosViajesDisponibles = suscripcion.viajes_disponibles - 1;
+          const nuevosViajesUtilizados = suscripcion.viajes_utilizados + 1;
+          const nuevoEstado = nuevosViajesDisponibles === 0 ? 'sin_viajes' : 'activa';
+
+          // Actualizar la suscripción
+          const { data: suscripcionUpdate, error: updateError } = await supabase
+            .from('suscripciones')
+            .update({
+              viajes_disponibles: nuevosViajesDisponibles,
+              viajes_utilizados: nuevosViajesUtilizados,
+              estado: nuevoEstado,
+              updated_at: ahora.toISOString()
+            })
+            .eq('id', suscripcion.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            console.error('❌ Error actualizando suscripción:', updateError);
+          } else {
+            usoSubscripcion = true;
+            suscripcionActualizada = suscripcionUpdate;
+            console.log(`✅ Viaje de suscripción utilizado. Quedan: ${nuevosViajesDisponibles} viajes`);
+          }
+        } else if (ahora > vencimiento) {
+          console.log('ℹ️ Suscripción encontrada pero está vencida');
+          // Marcar suscripción como inactiva si está vencida
+          await supabase
+            .from('suscripciones')
+            .update({
+              estado: 'inactiva',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', suscripcion.id);
+        } else if (suscripcion.viajes_disponibles <= 0) {
+          console.log('ℹ️ Suscripción encontrada pero sin viajes disponibles');
+        }
+      } else {
+        console.log('ℹ️ Usuario no tiene suscripción activa o hubo error:', errorSuscripcion?.message);
+      }
+
 
       // 3. Simular desbloqueo del candado
       const desbloqueoExitoso = await this.simularDesbloqueoCandado(bicicleta.id);
@@ -657,7 +723,14 @@ class BookingHandler {
           serialNumber: serialNumber,
           reservaId: reservaCompletada?.id,
           timestamp: new Date().toISOString(),
-          tiempoDesbloqueo: desbloqueoExitoso.tiempo
+          tiempoDesbloqueo: desbloqueoExitoso.tiempo,
+          usoSubscripcion: usoSubscripcion,
+          suscripcion: suscripcionActualizada ? {
+            id: suscripcionActualizada.id,
+            viajes_disponibles: suscripcionActualizada.viajes_disponibles,
+            viajes_utilizados: suscripcionActualizada.viajes_utilizados,
+            estado: suscripcionActualizada.estado
+          } : null
         }
       });
 
@@ -667,7 +740,11 @@ class BookingHandler {
         success: true,
         bicicleta: bicicletaActualizada,
         tiempoDesbloqueo: desbloqueoExitoso.tiempo,
-        mensaje: 'Viaje iniciado exitosamente'
+        usoSubscripcion: usoSubscripcion,
+        suscripcion: suscripcionActualizada,
+        mensaje: usoSubscripcion 
+          ? `Viaje iniciado usando suscripción. Te quedan ${suscripcionActualizada.viajes_disponibles} viajes disponibles.`
+          : 'Viaje iniciado exitosamente (se cobrará al finalizar el viaje)'
       };
 
     } catch (error) {
