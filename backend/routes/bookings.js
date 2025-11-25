@@ -22,4 +22,8 @@ router.get("/historial", bookingController.obtenerHistorialReservasConAuth);
 router.get("/estadisticas", bookingController.obtenerEstadisticasUsuarioConAuth);
 router.get("/reserva/:id", bookingController.obtenerReservaPorIdConAuth);
 
+// == HISTORIAL VIAJES ==
+router.get('/viajes/historial', bookingController.obtenerHistorialViajesCompletoConAuth);
+router.get('/viajes/activo', bookingController.obtenerViajeActivoCompletoConAuth);
+
 export default router;

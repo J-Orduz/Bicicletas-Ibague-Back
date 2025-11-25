@@ -1193,6 +1193,206 @@ class BookingHandler {
     }
   }
 
+  // === MÉTODOS PARA HISTORIAL DE VIAJES ===
+
+  async obtenerHistorialViajesCompleto(usuarioId) {
+    try {
+      console.log(`📊 Obteniendo historial completo de viajes para usuario: ${usuarioId}`);
+      
+      // Consulta para obtener todos los viajes del usuario con información relacionada
+      const { data: viajes, error } = await supabase
+        .from('Viaje')
+        .select(`
+          id,
+          idReserva,
+          fechacomienzo,
+          fechafin,
+          tiempoViaje,
+          precio,
+          tipo_viaje,
+          estacionFin,
+          estacionInicio,
+          distanciaRecorrida,
+          estadoPago,
+          estado_viaje,
+          Reserva!inner(
+            id,
+            bicicleta_id,
+            numero_serie,
+            Bicicleta(
+              id,
+              marca,
+              tipo,
+              numero_serie,
+              idEstacion,
+              Estacion(
+                id,
+                nombre,
+                posicion
+              )
+            )
+          )
+        `)
+        .eq('Reserva.usuario_id', usuarioId)
+        .order('fechacomienzo', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error obteniendo historial de viajes:', error);
+        throw new Error(`Error al obtener el historial de viajes: ${error.message}`);
+      }
+
+      // Formatear los datos para la respuesta
+      const historialFormateado = viajes.map(viaje => ({
+        id: viaje.id,
+        reserva: {
+          id: viaje.idReserva,
+          bicicleta_id: viaje.Reserva.bicicleta_id,
+          numero_serie: viaje.Reserva.numero_serie
+        },
+        bicicleta: {
+          id: viaje.Reserva.Bicicleta?.id,
+          marca: viaje.Reserva.Bicicleta?.marca || 'N/A',
+          tipo: viaje.Reserva.Bicicleta?.tipo || 'N/A',
+          numero_serie: viaje.Reserva.Bicicleta?.numero_serie || 'N/A',
+          estacion_inicio: {
+            id: viaje.Reserva.Bicicleta?.idEstacion,
+            nombre: viaje.Reserva.Bicicleta?.Estacion?.nombre || 'N/A',
+            posicion: viaje.Reserva.Bicicleta?.Estacion?.posicion || null
+          }
+        },
+        fechas: {
+          inicio: viaje.fechacomienzo,
+          fin: viaje.fechafin
+        },
+        duracion: viaje.tiempoViaje,
+        distancia: viaje.distanciaRecorrida,
+        precio: viaje.precio,
+        tipo_viaje: viaje.tipo_viaje,
+        estado_viaje: viaje.estado_viaje,
+        estado_pago: viaje.estadoPago,
+        estaciones: {
+          inicio: viaje.estacionInicio,
+          fin: viaje.estacionFin
+        }
+      }));
+
+      console.log(`✅ Historial de viajes obtenido: ${historialFormateado.length} viajes encontrados`);
+      
+      return historialFormateado;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerHistorialViajesCompleto:', error);
+      throw error;
+    }
+  }
+
+  async obtenerViajeActivoCompleto(usuarioId) {
+    try {
+      console.log(`🔍 Buscando viaje activo completo para usuario: ${usuarioId}`);
+      
+      // Consulta para obtener el viaje activo con información relacionada
+      const { data: viajeActivo, error } = await supabase
+        .from('Viaje')
+        .select(`
+          id,
+          idReserva,
+          fechacomienzo,
+          tiempoViaje,
+          precio,
+          tipo_viaje,
+          estacionInicio,
+          distanciaRecorrida,
+          estadoPago,
+          estado_viaje,
+          Reserva!inner(
+            id,
+            bicicleta_id,
+            numero_serie,
+            Bicicleta(
+              id,
+              marca,
+              tipo,
+              numero_serie,
+              idEstacion,
+              Estacion(
+                id,
+                nombre,
+                posicion
+              )
+            )
+          )
+        `)
+        .eq('Reserva.usuario_id', usuarioId)
+        .eq('estado_viaje', 'iniciado')
+        .order('fechacomienzo', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error?.code === 'PGRST116') {
+        console.log('ℹ️ No se encontró viaje activo para el usuario');
+        return null;
+      }
+
+      if (error) {
+        console.error('❌ Error obteniendo viaje activo:', error);
+        throw new Error(`Error al obtener el viaje activo: ${error.message}`);
+      }
+
+      // Formatear los datos para la respuesta
+      const viajeFormateado = {
+        id: viajeActivo.id,
+        reserva: {
+          id: viajeActivo.idReserva,
+          bicicleta_id: viajeActivo.Reserva.bicicleta_id,
+          numero_serie: viajeActivo.Reserva.numero_serie
+        },
+        bicicleta: {
+          id: viajeActivo.Reserva.Bicicleta?.id,
+          marca: viajeActivo.Reserva.Bicicleta?.marca || 'N/A',
+          tipo: viajeActivo.Reserva.Bicicleta?.tipo || 'N/A',
+          numero_serie: viajeActivo.Reserva.Bicicleta?.numero_serie || 'N/A',
+          estacion_inicio: {
+            id: viajeActivo.Reserva.Bicicleta?.idEstacion,
+            nombre: viajeActivo.Reserva.Bicicleta?.Estacion?.nombre || 'N/A',
+            posicion: viajeActivo.Reserva.Bicicleta?.Estacion?.posicion || null
+          }
+        },
+        fecha_inicio: viajeActivo.fechacomienzo,
+        duracion_actual: this.calcularDuracionDesdeInicio(viajeActivo.fechacomienzo),
+        tipo_viaje: viajeActivo.tipo_viaje,
+        estado_viaje: viajeActivo.estado_viaje,
+        estado_pago: viajeActivo.estadoPago,
+        estacion_inicio: viajeActivo.estacionInicio,
+        distancia_recorrida: viajeActivo.distanciaRecorrida
+      };
+
+      console.log(`✅ Viaje activo encontrado: ${viajeFormateado.id}`);
+      
+      return viajeFormateado;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerViajeActivoCompleto:', error);
+      return null;
+    }
+  }
+
+  // Método auxiliar para calcular duración desde el inicio
+  calcularDuracionDesdeInicio(fechaInicio) {
+    if (!fechaInicio) return null;
+    
+    const inicio = new Date(fechaInicio);
+    const ahora = new Date();
+    const duracionMs = ahora.getTime() - inicio.getTime();
+    
+    const minutos = Math.floor(duracionMs / (1000 * 60));
+    const horas = Math.floor(minutos / 60);
+    
+    if (horas > 0) {
+      return `${horas}h ${minutos % 60}m`;
+    }
+    return `${minutos}m`;
+  }
+
 
   // === MÉTODOS DE CONSULTA ===
 

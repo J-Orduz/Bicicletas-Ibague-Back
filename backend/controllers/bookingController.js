@@ -453,6 +453,59 @@ export const obtenerReservaPorId = async (req, res) => {
 };
 
 
+// === CONTROLADORES PARA HISTORIAL DE VIAJES ===
+
+export const obtenerHistorialViajesCompleto = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    
+    console.log(`📊 Obteniendo historial completo de viajes para usuario: ${usuarioId}`);
+    
+    const historial = await bookingHandler.obtenerHistorialViajesCompleto(usuarioId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Historial de viajes obtenido exitosamente',
+      data: {
+        viajes: historial,
+        total_viajes: historial.length
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo historial completo de viajes:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error al obtener el historial de viajes'
+    });
+  }
+};
+
+export const obtenerViajeActivoCompleto = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    
+    console.log(`🔍 Buscando viaje activo completo para usuario: ${usuarioId}`);
+    
+    const viajeActivo = await bookingHandler.obtenerViajeActivoCompleto(usuarioId);
+    
+    res.status(200).json({
+      success: true,
+      message: viajeActivo ? 'Viaje activo encontrado' : 'No hay viaje activo',
+      data: viajeActivo
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo viaje activo completo:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener el viaje activo'
+    });
+  }
+};
+
 // === APLICAR MIDDLEWARE A LAS RUTAS ===
 
 export const reservarBicicletaConAuth = [extractUserFromToken, reservarBicicleta];
@@ -465,3 +518,5 @@ export const reservarBicicletaProgramadaConAuth = [extractUserFromToken, reserva
 export const obtenerHistorialReservasConAuth = [extractUserFromToken, obtenerHistorialReservas];
 export const obtenerEstadisticasUsuarioConAuth = [extractUserFromToken, obtenerEstadisticasUsuario];
 export const obtenerReservaPorIdConAuth = [extractUserFromToken, obtenerReservaPorId];
+export const obtenerHistorialViajesCompletoConAuth = [extractUserFromToken, obtenerHistorialViajesCompleto];
+export const obtenerViajeActivoCompletoConAuth = [extractUserFromToken, obtenerViajeActivoCompleto];
