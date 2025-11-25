@@ -132,7 +132,7 @@ export const cancelarReserva = async (req, res) => {
 
 export const iniciarViajeConSerial = async (req, res) => {
   try {
-    const { serialNumber, bikeId } = req.body;
+    const { serialNumber, bikeId, estacionFin } = req.body;
     const usuarioId = req.user.id;
     
     console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}`);
@@ -153,7 +153,15 @@ export const iniciarViajeConSerial = async (req, res) => {
       });
     }
 
-    const resultado = await bookingHandler.iniciarViajeConSerial(serialNumber, bikeId, usuarioId);
+    // Validar que estacionFin sea un número válido
+    if (isNaN(estacionFin) || estacionFin <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'La estación de destino debe ser un ID válido'
+      });
+    }
+
+    const resultado = await bookingHandler.iniciarViajeConSerial(serialNumber, bikeId, usuarioId, estacionFin);
     
     res.status(200).json({
       success: true,

@@ -604,9 +604,9 @@ class BookingHandler {
 
   // === MÉTODOS DE VIAJE ===
 
-  async iniciarViajeConSerial(serialNumber, bikeId, usuarioId) {
+  async iniciarViajeConSerial(serialNumber, bikeId, usuarioId, estacionFin) {
     try {
-      console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}`);
+      console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}, EstacionFin: ${estacionFin}`);
       
       // 1. Buscar bicicleta por número de serie
       const { data: bicicleta, error: bikeError } = await supabase
@@ -744,8 +744,9 @@ class BookingHandler {
         .insert({
           idReserva: reservaActiva.id,
           fechacomienzo: ahora.toISOString(),
-          estado_viaje: 'iniciado', // ✅ Estado inicial
-          estacionInicio: bicicleta.idEstacion, // Asumiendo que la bicicleta tiene estación
+          estado_viaje: 'iniciado', // Estado inicial
+          estacionInicio: bicicleta.idEstacion,
+          estacionFin: estacionFin, // Asumiendo que la bicicleta tiene estación
           tipo_viaje: 'MILLA', // Valor por defecto
           estadoPago: 'PENDIENTE' // Valor por defecto
         })
@@ -774,6 +775,7 @@ class BookingHandler {
           viajeId: nuevoViaje?.id, // ID del viaje creado
           timestamp: new Date().toISOString(),
           tiempoDesbloqueo: desbloqueoExitoso.tiempo,
+          estacionFin: estacionFin,
           usoSubscripcion: usoSubscripcion,
           suscripcion: suscripcionActualizada ? {
             id: suscripcionActualizada.id,
@@ -784,13 +786,14 @@ class BookingHandler {
         }
       });
 
-      console.log(`🚀 Viaje iniciado exitosamente para bicicleta: ${serialNumber}`);
+      console.log(`🚀 Viaje iniciado exitosamente para bicicleta: ${serialNumber} con destino a estación: ${estacionFin}`);
       
       return {
         success: true,
         bicicleta: bicicletaActualizada,
         viaje: nuevoViaje,
         tiempoDesbloqueo: desbloqueoExitoso.tiempo,
+        estacionFin: estacionFin,
         usoSubscripcion: usoSubscripcion,
         suscripcion: suscripcionActualizada,
         mensaje: usoSubscripcion 
