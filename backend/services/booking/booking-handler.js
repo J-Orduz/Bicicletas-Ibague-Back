@@ -105,6 +105,12 @@ class BookingHandler {
   async reservarBicicleta(bikeId, usuarioId) {
     try {
       console.log(`📋 Solicitud de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
+
+      // Verificar que no tenga viajes activos
+      const estadoViaje = await this.verificarViajesActivos(usuarioId);
+      if (estadoViaje && estadoViaje.tiene_viajes_activos) {
+        throw new Error(estadoViaje.mensaje);
+      }
       
       const estadoUsuario = await this.verificarUsuarioPuedeReservar(usuarioId);
       if (!estadoUsuario.puedeReservar) {
@@ -315,6 +321,12 @@ class BookingHandler {
     try {
       console.log(`📅 Solicitud de reserva programada - BikeID: ${bikeId}, Usuario: ${usuarioId}, Fecha: ${fechaHoraProgramada}`);
       
+      // Verificar que no tenga viajes activos
+      const estadoViaje = await this.verificarViajesActivos(usuarioId);
+      if (estadoViaje && estadoViaje.tiene_viajes_activos) {
+        throw new Error(estadoViaje.mensaje);
+      }
+
       // Verificar si el usuario puede reservar
       const estadoUsuario = await this.verificarUsuarioPuedeReservar(usuarioId);
       if (!estadoUsuario.puedeReservar) {
@@ -711,6 +723,43 @@ class BookingHandler {
         throw new Error(`Error al iniciar viaje: ${updateError.message}`);
       }
 
+
+      // OBTENER LA RESERVA ACTIVA PARA CREAR EL VIAJE
+      const { data: reservaActiva, error: reservaError } = await supabase
+        .from(reservaTable)
+        .select('id, bicicleta_id, usuario_id')
+        .eq('bicicleta_id', bikeId)
+        .eq('usuario_id', usuarioId)
+        .eq('estado_reserva', ReservaStatus.ACTIVA)
+        .single();
+
+      if (reservaError || !reservaActiva) {
+        throw new Error('No se pudo encontrar la reserva activa para crear el viaje');
+      }
+
+      // CREAR REGISTRO EN LA TABLA VIAJE
+      const ahora = new Date();
+      const { data: nuevoViaje, error: viajeError } = await supabase
+        .from('Viaje')
+        .insert({
+          idReserva: reservaActiva.id,
+          fechacomienzo: ahora.toISOString(),
+          estado_viaje: 'iniciado', // ✅ Estado inicial
+          estacionInicio: bicicleta.idEstacion, // Asumiendo que la bicicleta tiene estación
+          tipo_viaje: 'MILLA', // Valor por defecto
+          estadoPago: 'PENDIENTE' // Valor por defecto
+        })
+        .select()
+        .single();
+      
+        if (viajeError) {
+          console.error('❌ Error creando registro de viaje:', viajeError);
+          // No lanzamos error aquí para no interrumpir el flujo, pero lo registramos
+        } else {
+          console.log(`✅ Registro de viaje creado: ${nuevoViaje.id}`);
+        }
+
+
       // 5. Completar la reserva
       const reservaCompletada = await this.completarReserva(bicicleta.id, usuarioId);
 
@@ -722,6 +771,7 @@ class BookingHandler {
           usuarioId: usuarioId,
           serialNumber: serialNumber,
           reservaId: reservaCompletada?.id,
+          viajeId: nuevoViaje?.id, // ID del viaje creado
           timestamp: new Date().toISOString(),
           tiempoDesbloqueo: desbloqueoExitoso.tiempo,
           usoSubscripcion: usoSubscripcion,
@@ -739,6 +789,7 @@ class BookingHandler {
       return {
         success: true,
         bicicleta: bicicletaActualizada,
+        viaje: nuevoViaje,
         tiempoDesbloqueo: desbloqueoExitoso.tiempo,
         usoSubscripcion: usoSubscripcion,
         suscripcion: suscripcionActualizada,
@@ -942,6 +993,67 @@ class BookingHandler {
         });
       }, Math.random() * 800 + 200);
     });
+  }
+
+
+  // === MÉTODOS PARA VERIFICAR VIAJES ACTIVOS ===
+
+  async verificarViajesActivos(usuarioId) {
+    try {
+      console.log(`🔍 Verificando viajes activos para usuario: ${usuarioId}`);
+      
+      const { data: estadoViaje, error } = await supabase
+        .rpc('puede_hacer_reservas', { usuario_id: usuarioId });
+
+      if (error) {
+        console.error('❌ Error verificando viajes activos:', error);
+        throw new Error('Error al verificar el estado de viajes');
+      }
+
+      console.log(`📊 Estado de viajes activos:`, estadoViaje);
+      
+      return estadoViaje;
+
+    } catch (error) {
+      console.error('❌ Error en verificarViajesActivos:', error);
+      throw error;
+    }
+  }
+
+  async tieneViajeActivo(usuarioId) {
+    try {
+      const { data: tieneViaje, error } = await supabase
+        .rpc('tiene_viaje_activo', { usuario_id: usuarioId });
+
+      if (error) {
+        console.error('❌ Error verificando viaje activo:', error);
+        return false; // Por seguridad, asumimos que no tiene viaje activo
+      }
+
+      return tieneViaje;
+
+    } catch (error) {
+      console.error('❌ Error en tieneViajeActivo:', error);
+      return false;
+    }
+  }
+
+  async obtenerViajeActivo(usuarioId) {
+    try {
+      const { data: viajeActivo, error } = await supabase
+        .rpc('obtener_viaje_activo', { usuario_id: usuarioId });
+
+      if (error) {
+        console.error('❌ Error obteniendo viaje activo:', error);
+        return null;
+      }
+
+      return viajeActivo;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerViajeActivo:', error);
+      return null;
+    }
   }
 
 

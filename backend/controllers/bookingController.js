@@ -74,6 +74,8 @@ export const reservarBicicleta = async (req, res) => {
       statusCode = 409;
     } else if (error.message.includes('Ya tienes una reserva activa')) {
       statusCode = 409;
+    } else if (error.message.includes('Tienes un viaje activo')) {
+      statusCode = 409; 
     }
 
     res.status(statusCode).json({
@@ -301,6 +303,8 @@ export const reservarBicicletaProgramada = async (req, res) => {
       statusCode = 409;
     } else if (error.message.includes('fecha debe ser futura')) {
       statusCode = 400;
+    } else if (error.message.includes('Tienes un viaje activo')) {
+      statusCode = 409; 
     }
 
     res.status(statusCode).json({
