@@ -1284,6 +1284,7 @@ class BookingHandler {
         duracion: viaje.tiempoViaje,
         distancia: viaje.distanciaRecorrida,
         precio: viaje.precioTotal,
+        precioTiempoExtra: viaje.tiempoExtra,
         subtotal: viaje.precioSubtotal,
         impuesto: viaje.impuesto,
         tipo_viaje: viaje.tipo_viaje,
