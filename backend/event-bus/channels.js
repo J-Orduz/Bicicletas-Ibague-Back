@@ -4,5 +4,6 @@ export const CHANNELS = {
   RESERVAS: 'reservas', 
   VIAJES: 'viajes',
   PAGOS: 'pagos',
+  ESTACIONES: 'estaciones',
   NOTIFICACIONES: 'notificaciones'
 };

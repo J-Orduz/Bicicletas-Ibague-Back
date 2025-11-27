@@ -25,33 +25,19 @@ import { TOPICS } from "./topics.js";
 export function initMqttClient() {
   console.log("[MQTT] Conectandose al broker mqtt...");
   client.on('connect', () => {
-    console.log("[MQTT] Conexion al broker exitosa");
+    console.log("Successful connection to the mqtt broker");
 
-    // el dispositivo se suscribe a los canales despues de
-    // conectarse exitosamente al broker
-    client.subscribe(TOPICS.telemetria);
-    client.subscribe(TOPICS.telemetria);
-    eventBus.subscribe(CHANNELS.BICICLETAS, async (event) => {
-      console.log(`[MQTT] Informando a bicicleta ${event.data.bikeId}
-        del evento ${event.type}`);
-      switch (event.type) {
-      case 'viaje_iniciado':
-      case 'viaje_finalizado':
-        client.publish(TOPICS.viaje, JSON.stringify(event.data));
-        break;
-      }
+    // el dispositivo se suscribe a los canales despues de conectarse exitosamente al broker
+    client.subscribe('bikes/+/telemetry', async (data) => {
+      await bicicletaService.registrarTelemetria(data);
+    });
+    client.subscribe('bikes/+/status', async (id, status) => {
+    await bikeHandler.changeStatus(id, status);
     });
   });
 
   client.on('message', (topic, buffer) => {
-    console.log(`[MQTT] Message from ${topic}`);
-    switch (topic) {
-    case 'telemetry':
-      sendTelemetry(JSON.parse(buffer));
-      break;
-    case 'status':
-      updateStatus(JSON.parse(buffer));
-      break;
-    }
+    console.log(`Message from ${topic}`);
+    
   });
 }

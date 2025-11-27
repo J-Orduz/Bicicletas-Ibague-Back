@@ -27,7 +27,7 @@ export const BatteryLevel = {
 };
 
 class BikeHandler {
-  constructor() {}
+  constructor() { }
 
   // === CONSULTAS BÁSICAS ===
   async getBikeBySerial(serialNumber) {
@@ -36,7 +36,7 @@ class BikeHandler {
       .select("*")
       .eq("numero_serie", serialNumber)
       .single();
-    
+
     if (error) {
       throw new Error(`Bicicleta no encontrada: ${error.message}`);
     }
@@ -49,7 +49,7 @@ class BikeHandler {
       .select("*")
       .eq("id", bikeId)
       .single();
-    
+
     if (error) {
       throw new Error(`Error obteniendo bicicleta: ${error.message}`);
     }
@@ -61,7 +61,7 @@ class BikeHandler {
       .from(bikeTable)
       .select("*")
       .eq("idEstacion", idEstacion);
-    
+
     if (error) throw error;
     return data;
   }
@@ -70,8 +70,8 @@ class BikeHandler {
     const { data, error } = await supabase
       .from(bikeTable)
       .select("*");
-    
-    if (error) throw Error(error.message);
+
+    if (error) throw error;
     return data;
   }
 
@@ -93,8 +93,8 @@ class BikeHandler {
     // Publicar evento de estado actualizado
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "estado_actualizado",
-      data: { 
-        bikeId: data.id, 
+      data: {
+        bikeId: data.id,
         status: data.estado,
         numero_serie: data.numero_serie,
         timestamp: new Date().toISOString()
@@ -113,20 +113,20 @@ class BikeHandler {
       .eq("id", bikeId)
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Error actualizando posición: ${error.message}`);
     }
-    
+
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "posicion_actualizada",
-      data: { 
-        bikeId: bikeId, 
+      data: {
+        bikeId: bikeId,
         newPos: newPos,
         timestamp: new Date().toISOString()
       }
     });
-    
+
     return data;
   }
 
@@ -136,27 +136,27 @@ class BikeHandler {
 
     const { data, error } = await supabase
       .from(bikeTable)
-      .update({ 
+      .update({
         idEstacion: dockId,
         estado: BikeStatus.DISPONIBLE
       })
       .eq("id", bikeId)
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Error enlazando bicicleta: ${error.message}`);
     }
-    
+
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "bicicleta_enlazada",
-      data: { 
-        bikeId: bikeId, 
+      data: {
+        bikeId: bikeId,
         dockId: dockId,
         timestamp: new Date().toISOString()
       }
     });
-    
+
     console.log(`✅ Bicicleta ${bikeId} enlazada al dock ${dockId}`);
     return data;
   }
@@ -168,11 +168,11 @@ class BikeHandler {
       .insert([bikeData])
       .select()
       .single();
-    
+
     if (error) {
       throw new Error(`Error registrando bicicleta: ${error.message}`);
     }
-    
+
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "bicicleta_registrada",
       data: {
@@ -183,7 +183,7 @@ class BikeHandler {
         timestamp: new Date().toISOString()
       }
     });
-    
+
     console.log(`✅ Bicicleta registrada: ${data.numero_serie}`);
     return data;
   }
@@ -205,7 +205,7 @@ class BikeHandler {
 
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "reportada_abandonada",
-      data: { 
+      data: {
         bikeId: bikeId,
         ubicacion: ubicacion,
         timestamp: new Date().toISOString()
@@ -231,10 +231,29 @@ class BikeHandler {
 
     await eventBus.publish(CHANNELS.BICICLETAS, {
       type: "bicicleta_descargada",
-      data: { 
+      data: {
         bikeId: bikeId,
         motivo: motivo,
         timestamp: new Date().toISOString()
+      }
+    });
+
+    return data;
+  }
+  async getEstacionDeBicicleta(data) {
+    const { reservaId, id } = data;
+    const { estacion, error } = await supabase
+      .from(bikeTable)
+      .select("idEstacion")
+      .eq("id", id);
+
+    if (error) throw error;
+
+    await eventBus.publish(CHANNELS.ESTACIONES, {
+      type: "consulta_estacion",
+      data: {
+        idReserva: reservaId,
+        idEstacion: estacion.idEstacion
       }
     });
 

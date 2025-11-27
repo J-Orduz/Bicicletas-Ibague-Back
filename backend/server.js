@@ -71,6 +71,8 @@ import paymentRoutes from "./routes/payments.js";
 import configRoutes from "./routes/config.js";
 import { reservaCleanupService } from "./services/booking/reserva-cleanup.js";
 import citypassRoutes from './routes/citypass.js';
+import  stationRoutes  from "./routes/station.js";
+import  tripRoutes  from "./routes/trip.js";
 
 // Usar rutas
 // Servir ejemplos estáticos (ej. /examples/payment.html) desde el mismo origen
@@ -86,6 +88,8 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/config", configRoutes);
 app.use('/api/citypass', citypassRoutes);
+app.use("/api/stations", stationRoutes);
+app.use("/api/trips", tripRoutes);
 
 // 4. Manejo global de errores
 app.use((error, req, res, next) => {

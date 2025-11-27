@@ -4,7 +4,7 @@ import * as bicicletaController from "../controllers/bikeController.js";
 const router = Router();
 
 // === RUTAS PÚBLICAS (sin autenticación) ===
-router.get("/estaciones", bicicletaController.getEstaciones);
+//router.get("/estaciones", bicicletaController.getEstaciones);
 router.get("/:id/EstacionesBici", bicicletaController.getBicicletasPorEstacion);
 router.get("/", bicicletaController.getAllBicicletas);
 router.get("/:id", bicicletaController.getBicicleta);

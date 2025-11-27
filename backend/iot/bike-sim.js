@@ -147,23 +147,19 @@ function startup(id) {
       bateria, BatteryStatus.CARGADA);
   }
 
-  client.on('connect', () => {
-    console.log(`Bicicleta IoT #${id} reportando telemetría`);
-    client.subscribe(TOPICS.viaje);
-  });
+client.on('connect', () => {
+	console.log(`Bicicleta IoT #${id} reportando telemetría`);
+	client.subscribe(`bikes/${id}/unlock`, () => {
+		console.log(`Bicicleta ${id} desbloqueada`);
+		data.estado = BikeStatus.EN_USO;
+	});
+});
 
-  client.on('message', (topic, message) => {
-    data = JSON.parse(message);
-    if (data.id !== id) {
-      console.log(`[IOT ${id}]: message goes to ${data.id}`);
-    }
-    switch (topic) {
-    case TOPICS.viaje:
-      console.log(`[IOT ${id}] Desbloqueando...`);
-      self.estado = BikeStatus.EN_USO;
-    }
-  });
+client.on("message", (topic, message) => {
+  const command = JSON.parse(message.toString());
+  console.log(`[BIKE] Command received:`, command);
 
+<<<<<<< HEAD
   simulate(self);
 }
 */
@@ -172,3 +168,14 @@ var bikes = [new Bike(), new Bike(), new Bike()];
 const ids = ['E001', 'E002', 'E003'];
 for (i in range(0,3))
   bikes[i].init(ids[i]);
+=======
+  if (command.action === "unlock") {
+    console.log(`[BIKE] Bike ${BIKE_ID} unlocking...`);
+    client.publish(
+      `bikes/${BIKE_ID}/status`,
+      JSON.stringify({ unlocked: true, timestamp: Date.now() })
+    );
+  }
+  
+})};
+>>>>>>> fe278207c9283c3c16678b95523daa6f91c69912
