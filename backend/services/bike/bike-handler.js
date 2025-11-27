@@ -20,6 +20,12 @@ export const BatteryStatus = {
   DAMAGED: 'Dañada',
 };
 
+export const BatteryLevel = {
+  full: 0xff,
+  low: 0xff / 4,
+  zero: 0,
+};
+
 class BikeHandler {
   constructor() { }
 

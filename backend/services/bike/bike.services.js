@@ -1,5 +1,17 @@
 import { supabase } from "../../shared/supabase/client.js";
 
+export class Telemetria {
+  constructor(long, lat, bateria, estadoCandado) {
+    // TODO: asegurar que el id generado es único
+    this.id = Math.floor(Math.random() * 0xff), // numero entre 0 y 255
+    this.latitud = lat;
+    this.longitud = long;
+    this.bateria = bateria;
+    this.estadoCandado = estadoCandado;
+    this.fechaConsulta = "";
+  }
+};
+
 const listarEstaciones = async () => {
     let { data, error } = await supabase
         .from('Estacion')
