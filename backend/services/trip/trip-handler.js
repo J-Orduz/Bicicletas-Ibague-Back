@@ -2,6 +2,7 @@ import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
 
+
 const tripTable = "Viaje";
 
 /* ===================== ENUMS ===================== */
