@@ -19,7 +19,7 @@ const listarEstaciones = async () => {
         .from('Estacion')
         .select('*')
 
-    if (error) throw error;
+    if (error) throw Error(error.message);
     return data;
 }
 
@@ -68,10 +68,24 @@ export const obtenerTelemetriaHistorico = async (idBici) => {
   return data;
 };
 
+const ESTACIONES = await (async () => {
+  console.log(`[BIKE-SERVICE] Obteniendo lista de estaciones...`)
+  return listarEstaciones();
+})();
+
+function getEstacion(id) {
+  for (e in ESTACIONES) {
+    if (e.id === id) return e;
+  }
+  console.log(`[BIKE-SERVICE] Estacion con id: ${id} no encontrada`);
+  return null;
+}
+
 export const bicicletaService = {
   registrarTelemetria,
   listarEstaciones,
   listarBicicletasPorEstacion,
   obtenerTelemetriaActual,
-  obtenerTelemetriaHistorico
+  obtenerTelemetriaHistorico,
+  getEstacion,
 };
