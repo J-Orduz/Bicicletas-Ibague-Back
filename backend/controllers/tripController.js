@@ -45,6 +45,7 @@ const extractUserFromToken = async (req, res, next) => {
 
 
 export const finalizarViaje = async (req, res) => {
+  const usuarioId = req.user.id;
   try {
 
     const { viajeId } = req.body;
@@ -99,6 +100,7 @@ export const finalizarViaje = async (req, res) => {
 
 
 export const getViajes = async (req, res) => {
+  const usuarioId = req.user.id;
   try {
     const viajes = await tripHandler.obtenerViajes();
 

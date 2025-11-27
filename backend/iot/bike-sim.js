@@ -121,4 +121,5 @@ client.on("message", (topic, message) => {
       JSON.stringify({ unlocked: true, timestamp: Date.now() })
     );
   }
-});
+  
+})};

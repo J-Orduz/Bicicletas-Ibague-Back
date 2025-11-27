@@ -1283,7 +1283,7 @@ class BookingHandler {
         },
         duracion: viaje.tiempoViaje,
         distancia: viaje.distanciaRecorrida,
-        precio: viaje.precio,
+        precio: viaje.precioTotal,
         tipo_viaje: viaje.tipo_viaje,
         estado_viaje: viaje.estado_viaje,
         estado_pago: viaje.estadoPago,
