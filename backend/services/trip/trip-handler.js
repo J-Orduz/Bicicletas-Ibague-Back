@@ -236,25 +236,7 @@ class TripHandler {
     };
   }
 
-  async changeStatus(tripId, status) {
 
-
-    const { data, error } = await supabase
-      .from(tripTable)
-      .update({ estadoPago: status })
-      .eq("id", tripId)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Error actualizando estado: ${error.message}`);
-    }
-
-
-
-    console.log(`✅ Estado actualizado: ${data.numero_serie} -> ${status}`);
-    return data;
-  }
   async changeStatus(tripId, status) {
 
 
