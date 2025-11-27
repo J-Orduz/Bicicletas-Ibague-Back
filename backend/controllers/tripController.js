@@ -123,3 +123,4 @@ export const getViajes = async (req, res) => {
 
 
 export const finalizarViajeAuth = [extractUserFromToken, finalizarViaje];
+export const getViajesAuth = [extractUserFromToken, getViajes];

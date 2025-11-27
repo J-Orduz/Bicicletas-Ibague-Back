@@ -27,7 +27,7 @@ export const BikeStatus = {
   DISPONIBLE: 'Disponible',
   RESERVADA: 'Reservada'
 };
-export const tipoBicicleta={
+export const tipoBicicleta = {
   ELECTRICA: 'Electrica',
   MECANICA: 'Mecanica'
 }
@@ -641,9 +641,9 @@ class BookingHandler {
 
       //merequetengue
 
-   /*   if (bicicleta.tipo ===tipoBicicleta.ELECTRICA && bicicleta.) {
-        throw new Error(`La bicicleta no está disponible. Estado actual: ${bicicleta.estado}`);
-      }*/
+      /*   if (bicicleta.tipo ===tipoBicicleta.ELECTRICA && bicicleta.) {
+           throw new Error(`La bicicleta no está disponible. Estado actual: ${bicicleta.estado}`);
+         }*/
 
 
 
@@ -1218,39 +1218,41 @@ class BookingHandler {
       const { data: viajes, error } = await supabase
         .from('Viaje')
         .select(`
+    id,
+    idReserva,
+    fechacomienzo,
+    fechafin,
+    tiempoViaje,
+    precioSubtotal,
+    tipo_viaje,
+    estacionFin,
+    estacionInicio,
+    distanciaRecorrida,
+    estadoPago,
+    estado_viaje,
+    tiempoExtra,
+    impuesto,
+    precioTotal,
+    Reserva:Viaje_idReserva_fkey!inner(
+      id,
+      bicicleta_id,
+      numero_serie,
+      Bicicleta(
+        id,
+        marca,
+        tipo,
+        numero_serie,
+        idEstacion,
+        Estacion(
           id,
-          idReserva,
-          fechacomienzo,
-          fechafin,
-          tiempoViaje,
-          precio,
-          tipo_viaje,
-          estacionFin,
-          estacionInicio,
-          distanciaRecorrida,
-          estadoPago,
-          estado_viaje,
-          Reserva!inner(
-            id,
-            bicicleta_id,
-            numero_serie,
-            Bicicleta(
-              id,
-              marca,
-              tipo,
-              numero_serie,
-              idEstacion,
-              Estacion(
-                id,
-                nombre,
-                posicion
-              )
-            )
-          )
-        `)
+          nombre,
+          posicion
+        )
+      )
+    )
+  `)
         .eq('Reserva.usuario_id', usuarioId)
         .order('fechacomienzo', { ascending: false });
-
       if (error) {
         console.error('❌ Error obteniendo historial de viajes:', error);
         throw new Error(`Error al obtener el historial de viajes: ${error.message}`);
@@ -1305,38 +1307,37 @@ class BookingHandler {
     try {
       console.log(`🔍 Buscando viaje activo completo para usuario: ${usuarioId}`);
 
-      // Consulta para obtener el viaje activo con información relacionada
       const { data: viajeActivo, error } = await supabase
         .from('Viaje')
         .select(`
+        id,
+        idReserva,
+        fechacomienzo,
+        tiempoViaje,
+        precioSubtotal,
+        tipo_viaje,
+        estacionInicio,
+        distanciaRecorrida,
+        estadoPago,
+        estado_viaje,
+        Reserva!inner(
           id,
-          idReserva,
-          fechacomienzo,
-          tiempoViaje,
-          precio,
-          tipo_viaje,
-          estacionInicio,
-          distanciaRecorrida,
-          estadoPago,
-          estado_viaje,
-          Reserva!inner(
+          bicicleta_id,
+          numero_serie,
+          Bicicleta(
             id,
-            bicicleta_id,
+            marca,
+            tipo,
             numero_serie,
-            Bicicleta(
+            idEstacion,
+            Estacion(
               id,
-              marca,
-              tipo,
-              numero_serie,
-              idEstacion,
-              Estacion(
-                id, 
-                nombre,
-                posicion
-              )
+              nombre,
+              posicion
             )
           )
-        `)
+        )
+      `)
         .eq('Reserva.usuario_id', usuarioId)
         .eq('estado_viaje', 'iniciado')
         .order('fechacomienzo', { ascending: false })
@@ -1353,7 +1354,6 @@ class BookingHandler {
         throw new Error(`Error al obtener el viaje activo: ${error.message}`);
       }
 
-      // Formatear los datos para la respuesta
       const viajeFormateado = {
         id: viajeActivo.id,
         reserva: {
@@ -1378,11 +1378,11 @@ class BookingHandler {
         estado_viaje: viajeActivo.estado_viaje,
         estado_pago: viajeActivo.estadoPago,
         estacion_inicio: viajeActivo.estacionInicio,
-        distancia_recorrida: viajeActivo.distanciaRecorrida
+        distancia_recorrida: viajeActivo.distanciaReco,
+        precio_subtotal: viajeActivo.precioSubtotal
       };
 
       console.log(`✅ Viaje activo encontrado: ${viajeFormateado.id}`);
-
       return viajeFormateado;
 
     } catch (error) {
@@ -1390,6 +1390,7 @@ class BookingHandler {
       return null;
     }
   }
+
 
   // Método auxiliar para calcular duración desde el inicio
   calcularDuracionDesdeInicio(fechaInicio) {
