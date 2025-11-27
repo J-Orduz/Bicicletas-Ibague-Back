@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Example Payment (Stripe Elements)</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 2rem; }
+      #card-element { border: 1px solid #ccc; padding: 12px; border-radius: 6px; }
+      #pay { margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <h2>Example Payment (Stripe Elements)</h2>
+    <p>This file demonstrates a minimal client-side integration using Stripe Elements and the backend endpoints provided by the repo.</p>
+
+    <div>
+      <form id="payment-form">
+        <div id="card-element"></div>
+        <button id="pay">Pay 5,000 COP</button>
+      </form>
+      <div id="message" role="status" style="margin-top:12px;color:#b00"></div>
+    </div>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+      // If opened as file:// (origin === 'null'), default to localhost backend
+      const BACKEND = (window.location && window.location.origin && window.location.origin !== 'null')
+        ? window.location.origin
+        : 'http://localhost:3000';
+
+      async function init() {
+        const messageEl = document.getElementById('message');
+
+        // 1) get publishable key from backend
+        const cfgResp = await fetch(BACKEND + '/api/config/stripe-pk');
+        if (!cfgResp.ok) {
+          messageEl.textContent = 'Error fetching publishable key from backend';
+          return;
+        }
+        const cfg = await cfgResp.json();
+        const stripe = Stripe(cfg.publishableKey);
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        card.mount('#card-element');
+
+        // 2) handle form submit
+        document.getElementById('payment-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          messageEl.textContent = '';
+
+          // create payment intent on backend (amount in whole COP; server converts to centavos)
+          const piResp = await fetch(BACKEND + '/api/payments/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // amount in whole COP (pesos) — server will convert to centavos
+            body: JSON.stringify({ amount: 5000, currency: 'cop', metadata: { bookingId: 'example-1' } })
+          });
+
+          if (!piResp.ok) {
+            const err = await piResp.json().catch(()=>({error:'unknown'}));
+            messageEl.textContent = 'Error creating payment intent: ' + (err.error || JSON.stringify(err));
+            return;
+          }
+
+          const body = await piResp.json();
+          const clientSecret = body.paymentIntent && body.paymentIntent.client_secret;
+          if (!clientSecret) {
+            messageEl.textContent = 'No client_secret returned from backend';
+            return;
+          }
+
+          // 3) confirm payment in the client (this avoids sending PAN to backend)
+          const result = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: { card }
+          });
+
+          if (result.error) {
+            messageEl.textContent = 'Payment failed: ' + result.error.message;
+          } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+            messageEl.style.color = 'green';
+            messageEl.textContent = 'Payment succeeded (mock/sandbox)';
+          } else {
+            messageEl.textContent = 'Payment status: ' + JSON.stringify(result.paymentIntent || result);
+          }
+        });
+      }
+
+      init().catch(err => { document.getElementById('message').textContent = String(err); });
+    </script>
+  </body>
+</html>

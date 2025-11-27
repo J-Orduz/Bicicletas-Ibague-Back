@@ -1,0 +1,93 @@
+{
+  "info": {
+    "name": "BiciIbague Payments - Mock/Sandbox",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Validate Card (token)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"tok_visa\",\n  \"metadata\": { \"bookingId\": \"abc123\" }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/payments/validate-card",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api","payments","validate-card"]
+        }
+      }
+    },
+    {
+      "name": "Validate Card (PAN - mock only)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"number\": \"4242424242424242\",\n  \"exp_month\": \"12\",\n  \"exp_year\": \"2026\",\n  \"cvc\": \"123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/payments/validate-card",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api","payments","validate-card"]
+        }
+      }
+    },
+    {
+      "name": "Create PaymentIntent",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 5000,\n  \"currency\": \"cop\",\n  \"metadata\": { \"bookingId\": \"abc123\" }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/payments/create-payment-intent",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api","payments","create-payment-intent"]
+        }
+      }
+    },
+    {
+      "name": "Webhook (send mock payment_intent.succeeded)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": { \"object\": { \"id\": \"pi_mock_1\", \"amount\": 500000, \"currency\": \"cop\", \"metadata\": { \"bookingId\": \"abc123\" } } }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/payments/webhook",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api","payments","webhook"]
+        }
+      }
+    },
+    {
+      "name": "Get PaymentIntent by id",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3000/api/payments/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api","payments",":id"]
+        }
+      }
+    }
+  ]
+}
