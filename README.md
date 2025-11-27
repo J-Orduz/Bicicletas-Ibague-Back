@@ -2,8 +2,9 @@
 
 ## Run MQTT Broker (eclipse-mosquitto)
 With docker, in a cli, cd to backend/mqtt-iot and run:
-`docker-compose up`
-
+```
+docker-compose up
+```
 ## Run Backend Server
 
 Navigate to backend folder and run:
