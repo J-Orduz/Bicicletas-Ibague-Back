@@ -3,7 +3,7 @@ import { bikeHandler } from "../services/bike/bike-handler.js";
 
 // === CONTROLADORES DE CONSULTA ===
 
-export const getEstaciones = async (req, res) => {
+/*export const getEstaciones = async (req, res) => {
   try {
     console.log('🏢 Obteniendo lista de estaciones...');
     const data = await bicicletaService.listarEstaciones();
@@ -16,7 +16,7 @@ export const getEstaciones = async (req, res) => {
       message: 'Error al obtener las estaciones'
     });
   }
-};
+};*/
 
 export const getBicicletasPorEstacion = async (req, res) => {
   try {
