@@ -14,6 +14,12 @@ export const BikeStatus = {
   ABANDONADA: 'Abandonada'
 };
 
+export const BatteryStatus = {
+  CARGADA: 'Cargada',
+  BAJA: 'Baja',
+  DAMAGED: 'Dañada',
+};
+
 class BikeHandler {
   constructor() {}
 
