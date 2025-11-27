@@ -59,7 +59,7 @@ class BikeHandler {
       .from(bikeTable)
       .select("*");
     
-    if (error) throw error;
+    if (error) throw Error(error.message);
     return data;
   }
 
