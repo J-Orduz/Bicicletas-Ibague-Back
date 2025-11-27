@@ -1,46 +1,36 @@
-import { bikeHandler, BikeStatus } from "../services/bike/bike-handler";
-import { BikeStatus } from "../services/bike/bike-handler";
-import { Telemetria } from "../services/bike/bike.services";
-import { TOPICS } from "./topics";
-
-const mqtt = require('mqtt');
+import { bikeHandler } from "../services/bike/bike-handler";
 
 // dirección del servidor que hostea el broker mqtt (eclipse-mosquito)
 const BROKER_URL = 'mqtt://localhost:1883';
 
-async function simulate(bike) {
-  while (true) {
-    if (bike.estado !== BikeStatus.EN_USO) continue;
+const mqtt = require('mqtt');
 
+// se inicializa un cliente separado ya que el proceso es independiente al servidor
+const client = mqtt.connect(BROKER_URL);
+
+// el id de la bicicleta debe ser suplido como primer argumento de cli (argv[0])
+const id = process.argv[0];
+var data = bikeHandler.getBike(id);
+
+import { BikeStatus } from "../services/bike/bike-handler";
+
+client.on('connect', () => {
+	console.log(`Bicicleta IoT #${id} reportando telemetría`);
+	client.subscribe(`bikes/${id}/unlock`, () => {
+		console.log(`Bicicleta ${id} desbloqueada`);
+		data.estado = BikeStatus.EN_USO;
+	});
+});
+
+client.on("message", (topic, message) => {
+  const command = JSON.parse(message.toString());
+  console.log(`[BIKE] Command received:`, command);
+
+  if (command.action === "unlock") {
+    console.log(`[BIKE] Bike ${BIKE_ID} unlocking...`);
+    client.publish(
+      `bikes/${BIKE_ID}/status`,
+      JSON.stringify({ unlocked: true, timestamp: Date.now() })
+    );
   }
-}
-
-export function startup(id) {
-  // se inicializa un cliente separado ya que el proceso es independiente al servidor
-  const client = mqtt.connect(BROKER_URL);
-
-  var self = bikeHandler.getBike(id);
-  var telemetry = {};
-  {
-    
-  }
-
-  client.on('connect', () => {
-    console.log(`Bicicleta IoT #${id} reportando telemetría`);
-    client.subscribe(TOPICS.viaje);
-  });
-
-  client.on('message', (topic, message) => {
-    data = JSON.parse(message);
-    if (data.id !== id) {
-      console.log(`[IOT ${id}]: message goes to ${data.id}`);
-    }
-    switch (topic) {
-    case TOPICS.viaje:
-      console.log(`[IOT ${id}] Desbloqueando...`);
-      self.estado = BikeStatus.EN_USO;
-    }
-  });
-
-  simulate(self);
-}
+});

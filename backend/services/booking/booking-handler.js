@@ -8,7 +8,7 @@ const bikeTable = "Bicicleta";
 export const ReservaStatus = {
   ACTIVA: 'activa',
   PROGRAMADA: 'programada',
-  COMPLETADA: 'completada', 
+  COMPLETADA: 'completada',
   CANCELADA: 'cancelada',
   EXPIRADA: 'expirada',
   FALLIDA: 'fallida'
@@ -16,7 +16,7 @@ export const ReservaStatus = {
 
 export const MotivoFinalizacion = {
   INICIO_VIAJE: 'inicio_viaje',
-  CANCELACION_USUARIO: 'cancelacion_usuario', 
+  CANCELACION_USUARIO: 'cancelacion_usuario',
   EXPIRACION_TIEMPO: 'expiracion_tiempo',
   BICICLETA_NO_DISPONIBLE: 'bicicleta_no_disponible',
   ERROR_ACTIVACION: 'error_activacion'
@@ -27,16 +27,20 @@ export const BikeStatus = {
   DISPONIBLE: 'Disponible',
   RESERVADA: 'Reservada'
 };
+export const tipoBicicleta={
+  ELECTRICA: 'Electrica',
+  MECANICA: 'Mecanica'
+}
 
 class BookingHandler {
-  constructor() {}
+  constructor() { }
 
   // === MÉTODOS DE RESERVA ===
 
   async verificarUsuarioPuedeReservar(usuarioId) {
     try {
       console.log(`🔍 Verificando estado del usuario para reserva: ${usuarioId}`);
-      
+
       // 1. Verificar saldo en la tabla profiles
       const { data: perfil, error: perfilError } = await supabase
         .from('profiles')
@@ -78,7 +82,7 @@ class BookingHandler {
       if (multasPendientes && multasPendientes.length > 0) {
         console.log(`❌ Usuario ${usuarioId} tiene ${multasPendientes.length} multa(s) pendiente(s)`);
         const totalMultas = multasPendientes.reduce((sum, multa) => sum + multa.monto, 0);
-        
+
         return {
           puedeReservar: false,
           motivo: 'MULTAS_PENDIENTES',
@@ -111,7 +115,7 @@ class BookingHandler {
       if (estadoViaje && estadoViaje.tiene_viajes_activos) {
         throw new Error(estadoViaje.mensaje);
       }
-      
+
       const estadoUsuario = await this.verificarUsuarioPuedeReservar(usuarioId);
       if (!estadoUsuario.puedeReservar) {
         throw new Error(`No puede realizar reservas: ${estadoUsuario.detalles}`);
@@ -129,7 +133,7 @@ class BookingHandler {
         .select("*")
         .eq("id", bikeId)
         .single();
-      
+
       if (bikeError || !bicicleta) {
         throw new Error('Bicicleta no encontrada');
       }
@@ -163,7 +167,7 @@ class BookingHandler {
       // 4. Actualizar estado de la bicicleta a "Reservada"
       const { data: bicicletaActualizada, error: updateError } = await supabase
         .from(bikeTable)
-        .update({ 
+        .update({
           estado: BikeStatus.RESERVADA,
           reserva_usuario_id: usuarioId,
           reserva_timestamp: ahora.toISOString(),
@@ -193,7 +197,7 @@ class BookingHandler {
       });
 
       console.log(`✅ Bicicleta reservada exitosamente: ${bicicleta.numero_serie}`);
-      
+
       return {
         success: true,
         bicicleta: bicicletaActualizada,
@@ -212,14 +216,14 @@ class BookingHandler {
   async cancelarReserva(bikeId, usuarioId) {
     try {
       console.log(`❌ Solicitud de cancelación de reserva - BikeID: ${bikeId}, Usuario: ${usuarioId}`);
-      
+
       // 1. Verificar que la bicicleta existe y está reservada POR ESTE USUARIO
       const { data: bicicleta, error: bikeError } = await supabase
         .from(bikeTable)
         .select("*")
         .eq("id", bikeId)
         .single();
-      
+
       if (bikeError || !bicicleta) {
         throw new Error('Bicicleta no encontrada');
       }
@@ -275,7 +279,7 @@ class BookingHandler {
       // 4. ACTUALIZAR BICICLETA A "DISPONIBLE" (esto es lo más importante)
       const { data: bicicletaActualizada, error: updateBiciError } = await supabase
         .from(bikeTable)
-        .update({ 
+        .update({
           estado: BikeStatus.DISPONIBLE,
           reserva_usuario_id: null,
           reserva_timestamp: null,
@@ -303,7 +307,7 @@ class BookingHandler {
       });
 
       console.log(`✅ Reserva cancelada exitosamente: ${bicicleta.numero_serie}`);
-      
+
       return {
         success: true,
         bicicleta: bicicletaActualizada,
@@ -320,7 +324,7 @@ class BookingHandler {
   async reservarBicicletaProgramada(bikeId, usuarioId, fechaHoraProgramada) {
     try {
       console.log(`📅 Solicitud de reserva programada - BikeID: ${bikeId}, Usuario: ${usuarioId}, Fecha: ${fechaHoraProgramada}`);
-      
+
       // Verificar que no tenga viajes activos
       const estadoViaje = await this.verificarViajesActivos(usuarioId);
       if (estadoViaje && estadoViaje.tiene_viajes_activos) {
@@ -336,7 +340,7 @@ class BookingHandler {
       // Validar fecha futura
       const fechaProgramada = new Date(fechaHoraProgramada);
       const ahora = new Date();
-      
+
       if (fechaProgramada <= ahora) {
         throw new Error('La fecha de reserva debe ser futura');
       }
@@ -353,7 +357,7 @@ class BookingHandler {
         .select("*")
         .eq("id", bikeId)
         .single();
-      
+
       if (bikeError || !bicicleta) {
         throw new Error('Bicicleta no encontrada');
       }
@@ -390,7 +394,7 @@ class BookingHandler {
       // 4. ACTUALIZAR BICICLETA A "RESERVADA" INMEDIATAMENTE
       const { data: bicicletaActualizada, error: updateBiciError } = await supabase
         .from(bikeTable)
-        .update({ 
+        .update({
           estado: BikeStatus.RESERVADA,
           reserva_usuario_id: usuarioId,
           reserva_timestamp: ahora.toISOString(),
@@ -419,17 +423,17 @@ class BookingHandler {
           reservaId: nuevaReserva.id,
           timestamp_programada: timestampActivacion,
           timestamp_creacion: ahora.toISOString(),
-          estado_bicicleta: BikeStatus.RESERVADA 
+          estado_bicicleta: BikeStatus.RESERVADA
         }
       });
 
       console.log(`✅ Reserva programada exitosamente: ${bicicleta.numero_serie} para ${fechaProgramada}`);
       console.log(`🚲 Bicicleta actualizada a estado: ${BikeStatus.RESERVADA}`);
-      
+
       return {
         success: true,
         reserva: nuevaReserva,
-        bicicleta: bicicletaActualizada, 
+        bicicleta: bicicletaActualizada,
         tiempo_restante: fechaProgramada.getTime() - ahora.getTime(),
         mensaje: `Reserva programada exitosamente para ${fechaProgramada.toLocaleString()}. La bicicleta ya está reservada.`
       };
@@ -443,7 +447,7 @@ class BookingHandler {
   async programarActivacionReserva(reservaId, fechaActivacion) {
     const ahora = new Date();
     const tiempoEspera = fechaActivacion.getTime() - ahora.getTime();
-    
+
     if (tiempoEspera <= 0) {
       // Si ya pasó la fecha, activar inmediatamente
       this.activarReservaProgramada(reservaId);
@@ -451,7 +455,7 @@ class BookingHandler {
     }
 
     console.log(`⏰ Programando activación de reserva ${reservaId} en ${tiempoEspera}ms`);
-    
+
     setTimeout(async () => {
       try {
         await this.activarReservaProgramada(reservaId);
@@ -464,7 +468,7 @@ class BookingHandler {
   async activarReservaProgramada(reservaId) {
     try {
       console.log(`🔄 Activando reserva programada: ${reservaId}`);
-      
+
       // 1. Obtener datos de la reserva
       const { data: reserva, error } = await supabase
         .from(reservaTable)
@@ -510,19 +514,19 @@ class BookingHandler {
         throw new Error(`Error activando reserva: ${updateError.message}`);
       }
 
-       // NO actualizar bicicleta (ya está en estado RESERVADA)
+      // NO actualizar bicicleta (ya está en estado RESERVADA)
       // 4. Solo actualizar el timestamp de reserva para reflejar la activación
       const { error: bikeUpdateError } = await supabase
         .from(bikeTable)
-        .update({ 
+        .update({
           reserva_timestamp: new Date().toISOString() // Actualizar timestamp de activación
         })
         .eq('id', reserva.bicicleta_id);
 
-        if (bikeUpdateError) {
-          await this.marcarReservaComoFallida(reservaId, 'Error al reservar bicicleta');
-          return;
-        }
+      if (bikeUpdateError) {
+        await this.marcarReservaComoFallida(reservaId, 'Error al reservar bicicleta');
+        return;
+      }
 
       // 5. Publicar evento de activación
       await eventBus.publish(CHANNELS.RESERVAS, {
@@ -550,7 +554,7 @@ class BookingHandler {
 
       // Mapear mensajes de error a motivos específicos
       let motivoFinalizacion = MotivoFinalizacion.ERROR_ACTIVACION;
-      
+
       if (motivo.includes('Bicicleta no disponible')) {
         motivoFinalizacion = MotivoFinalizacion.BICICLETA_NO_DISPONIBLE;
       }
@@ -581,7 +585,7 @@ class BookingHandler {
 
   async verificarReservaSolapada(usuarioId, bikeId, fechaProgramada) {
     const margen = 30 * 60 * 1000; // 30 minutos de margen
-    
+
     const inicioBusqueda = new Date(fechaProgramada.getTime() - margen);
     const finBusqueda = new Date(fechaProgramada.getTime() + margen);
 
@@ -607,14 +611,14 @@ class BookingHandler {
   async iniciarViajeConSerial(serialNumber, bikeId, usuarioId, estacionFin) {
     try {
       console.log(`🎯 Solicitud de inicio de viaje - BikeID: ${bikeId}, Serial: ${serialNumber}, Usuario: ${usuarioId}, EstacionFin: ${estacionFin}`);
-      
+
       // 1. Buscar bicicleta por número de serie
       const { data: bicicleta, error: bikeError } = await supabase
         .from(bikeTable)
         .select("*")
         .eq("numero_serie", serialNumber)
         .single();
-      
+
       if (bikeError || !bicicleta) {
         throw new Error('Bicicleta no encontrada');
       }
@@ -623,17 +627,25 @@ class BookingHandler {
       if (bicicleta.id !== bikeId) {
         throw new Error(`El número de serie ${serialNumber} no corresponde a la bicicleta seleccionada`);
       }
-      
+
 
       const tieneReservaActiva = await this.verificarReservaActivaUsuario(bikeId, usuarioId);
       if (!tieneReservaActiva) {
         throw new Error('No tienes una reserva activa para esta bicicleta. Debes reservarla primero.');
       }
 
-      if (bicicleta.estado !== BikeStatus.DISPONIBLE && 
-          bicicleta.estado !== BikeStatus.RESERVADA) {
+      if (bicicleta.estado !== BikeStatus.DISPONIBLE &&
+        bicicleta.estado !== BikeStatus.RESERVADA) {
         throw new Error(`La bicicleta no está disponible. Estado actual: ${bicicleta.estado}`);
       }
+
+      //merequetengue
+
+   /*   if (bicicleta.tipo ===tipoBicicleta.ELECTRICA && bicicleta.) {
+        throw new Error(`La bicicleta no está disponible. Estado actual: ${bicicleta.estado}`);
+      }*/
+
+
 
       // VERIFICAR Y USAR SUSCRIPCIÓN 
       let usoSubscripcion = false;
@@ -653,10 +665,10 @@ class BookingHandler {
         // Verificar que la suscripción no esté vencida
         const ahora = new Date();
         const vencimiento = new Date(suscripcion.fecha_vencimiento);
-        
+
         if (ahora <= vencimiento && suscripcion.viajes_disponibles > 0) {
           console.log(`🎫 Usuario tiene suscripción activa. Viajes disponibles: ${suscripcion.viajes_disponibles}`);
-          
+
           // Calcular nuevos valores
           const nuevosViajesDisponibles = suscripcion.viajes_disponibles - 1;
           const nuevosViajesUtilizados = suscripcion.viajes_utilizados + 1;
@@ -709,7 +721,7 @@ class BookingHandler {
       // 4. Actualizar bicicleta a "En_Viaje"
       const { data: bicicletaActualizada, error: updateError } = await supabase
         .from(bikeTable)
-        .update({ 
+        .update({
           estado: BikeStatus.EN_USO,
           reserva_usuario_id: null,
           reserva_timestamp: null,
@@ -752,13 +764,13 @@ class BookingHandler {
         })
         .select()
         .single();
-      
-        if (viajeError) {
-          console.error('❌ Error creando registro de viaje:', viajeError);
-          // No lanzamos error aquí para no interrumpir el flujo, pero lo registramos
-        } else {
-          console.log(`✅ Registro de viaje creado: ${nuevoViaje.id}`);
-        }
+
+      if (viajeError) {
+        console.error('❌ Error creando registro de viaje:', viajeError);
+        // No lanzamos error aquí para no interrumpir el flujo, pero lo registramos
+      } else {
+        console.log(`✅ Registro de viaje creado: ${nuevoViaje.id}`);
+      }
 
 
       // 5. Completar la reserva
@@ -787,7 +799,7 @@ class BookingHandler {
       });
 
       console.log(`🚀 Viaje iniciado exitosamente para bicicleta: ${serialNumber} con destino a estación: ${estacionFin}`);
-      
+
       return {
         success: true,
         bicicleta: bicicletaActualizada,
@@ -796,7 +808,7 @@ class BookingHandler {
         estacionFin: estacionFin,
         usoSubscripcion: usoSubscripcion,
         suscripcion: suscripcionActualizada,
-        mensaje: usoSubscripcion 
+        mensaje: usoSubscripcion
           ? `Viaje iniciado usando suscripción. Te quedan ${suscripcionActualizada.viajes_disponibles} viajes disponibles.`
           : 'Viaje iniciado exitosamente (se cobrará al finalizar el viaje)'
       };
@@ -830,14 +842,14 @@ class BookingHandler {
       const ahora = new Date();
 
       // Verificar si hay alguna reserva ACTIVA que no haya expirado
-      const reservaActivaNoExpirada = reservasActivas.find(reserva => 
-        reserva.estado_reserva === ReservaStatus.ACTIVA && 
+      const reservaActivaNoExpirada = reservasActivas.find(reserva =>
+        reserva.estado_reserva === ReservaStatus.ACTIVA &&
         new Date(reserva.timestamp_expiracion) > ahora
       );
 
       // Verificar si hay alguna reserva PROGRAMADA que esté pendiente de activación
-      const reservaProgramadaPendiente = reservasActivas.find(reserva => 
-        reserva.estado_reserva === ReservaStatus.PROGRAMADA && 
+      const reservaProgramadaPendiente = reservasActivas.find(reserva =>
+        reserva.estado_reserva === ReservaStatus.PROGRAMADA &&
         new Date(reserva.timestamp_programada) > ahora
       );
 
@@ -923,7 +935,7 @@ class BookingHandler {
   async liberarReservasExpiradas() {
     try {
       const ahora = new Date().toISOString();
-      
+
       const { data: reservasExpiradas, error } = await supabase
         .from(reservaTable)
         .select('id, usuario_id, bicicleta_id, numero_serie, timestamp_expiracion')
@@ -954,7 +966,7 @@ class BookingHandler {
           // Actualizar bicicleta
           await supabase
             .from(bikeTable)
-            .update({ 
+            .update({
               estado: BikeStatus.DISPONIBLE,
               reserva_usuario_id: null,
               reserva_timestamp: null,
@@ -1004,7 +1016,7 @@ class BookingHandler {
   async verificarViajesActivos(usuarioId) {
     try {
       console.log(`🔍 Verificando viajes activos para usuario: ${usuarioId}`);
-      
+
       const { data: estadoViaje, error } = await supabase
         .rpc('puede_hacer_reservas', { usuario_id: usuarioId });
 
@@ -1014,7 +1026,7 @@ class BookingHandler {
       }
 
       console.log(`📊 Estado de viajes activos:`, estadoViaje);
-      
+
       return estadoViaje;
 
     } catch (error) {
@@ -1149,8 +1161,8 @@ class BookingHandler {
     if (!reserva.timestamp_reserva) return null;
 
     const inicio = new Date(reserva.timestamp_reserva);
-    const fin = reserva.timestamp_finalizacion 
-      ? new Date(reserva.timestamp_finalizacion) 
+    const fin = reserva.timestamp_finalizacion
+      ? new Date(reserva.timestamp_finalizacion)
       : new Date();
 
     const duracionMs = fin.getTime() - inicio.getTime();
@@ -1183,8 +1195,8 @@ class BookingHandler {
         reservas_canceladas: data.filter(r => r.estado_reserva === ReservaStatus.CANCELADA).length,
         reservas_programadas: data.filter(r => r.estado_reserva === ReservaStatus.PROGRAMADA).length,
         reservas_expiradas: data.filter(r => r.estado_reserva === ReservaStatus.EXPIRADA).length,
-        primera_reserva: data.length > 0 
-          ? new Date(Math.min(...data.map(r => new Date(r.timestamp_reserva)))) 
+        primera_reserva: data.length > 0
+          ? new Date(Math.min(...data.map(r => new Date(r.timestamp_reserva))))
           : null
       };
 
@@ -1201,7 +1213,7 @@ class BookingHandler {
   async obtenerHistorialViajesCompleto(usuarioId) {
     try {
       console.log(`📊 Obteniendo historial completo de viajes para usuario: ${usuarioId}`);
-      
+
       // Consulta para obtener todos los viajes del usuario con información relacionada
       const { data: viajes, error } = await supabase
         .from('Viaje')
@@ -1280,7 +1292,7 @@ class BookingHandler {
       }));
 
       console.log(`✅ Historial de viajes obtenido: ${historialFormateado.length} viajes encontrados`);
-      
+
       return historialFormateado;
 
     } catch (error) {
@@ -1292,7 +1304,7 @@ class BookingHandler {
   async obtenerViajeActivoCompleto(usuarioId) {
     try {
       console.log(`🔍 Buscando viaje activo completo para usuario: ${usuarioId}`);
-      
+
       // Consulta para obtener el viaje activo con información relacionada
       const { data: viajeActivo, error } = await supabase
         .from('Viaje')
@@ -1318,7 +1330,7 @@ class BookingHandler {
               numero_serie,
               idEstacion,
               Estacion(
-                id,
+                id, 
                 nombre,
                 posicion
               )
@@ -1370,7 +1382,7 @@ class BookingHandler {
       };
 
       console.log(`✅ Viaje activo encontrado: ${viajeFormateado.id}`);
-      
+
       return viajeFormateado;
 
     } catch (error) {
@@ -1382,14 +1394,14 @@ class BookingHandler {
   // Método auxiliar para calcular duración desde el inicio
   calcularDuracionDesdeInicio(fechaInicio) {
     if (!fechaInicio) return null;
-    
+
     const inicio = new Date(fechaInicio);
     const ahora = new Date();
     const duracionMs = ahora.getTime() - inicio.getTime();
-    
+
     const minutos = Math.floor(duracionMs / (1000 * 60));
     const horas = Math.floor(minutos / 60);
-    
+
     if (horas > 0) {
       return `${horas}h ${minutos % 60}m`;
     }
@@ -1399,10 +1411,10 @@ class BookingHandler {
 
   // === MÉTODOS DE CONSULTA ===
 
-async obtenerReservasUsuario(usuarioId) {
-  const { data: reservas, error } = await supabase
-    .from(reservaTable)
-    .select(`
+  async obtenerReservasUsuario(usuarioId) {
+    const { data: reservas, error } = await supabase
+      .from(reservaTable)
+      .select(`
       id,
       bicicleta_id,
       numero_serie,
@@ -1421,22 +1433,22 @@ async obtenerReservasUsuario(usuarioId) {
         idEstacion
       )
     `)
-    .eq('usuario_id', usuarioId)
-    .order('timestamp_reserva', { ascending: false });
+      .eq('usuario_id', usuarioId)
+      .order('timestamp_reserva', { ascending: false });
 
-  if (error) {
-    console.error('❌ Error obteniendo reservas del usuario:', error);
-    throw new Error('Error al obtener las reservas');
+    if (error) {
+      console.error('❌ Error obteniendo reservas del usuario:', error);
+      throw new Error('Error al obtener las reservas');
+    }
+
+    return reservas || [];
   }
 
-  return reservas || [];
-}
-
-async obtenerReservaActiva(usuarioId) {
-  try {
-    const { data: reserva, error } = await supabase
-      .from(reservaTable)
-      .select(`
+  async obtenerReservaActiva(usuarioId) {
+    try {
+      const { data: reserva, error } = await supabase
+        .from(reservaTable)
+        .select(`
         id,
         bicicleta_id,
         numero_serie,
@@ -1458,41 +1470,41 @@ async obtenerReservaActiva(usuarioId) {
           )
         )
       `)
-      .eq('usuario_id', usuarioId)
-      .in('estado_reserva', [ReservaStatus.ACTIVA, ReservaStatus.PROGRAMADA]) // ✅ Incluir programadas
-      .order('timestamp_reserva', { ascending: false })
-      .limit(1)
-      .single();
+        .eq('usuario_id', usuarioId)
+        .in('estado_reserva', [ReservaStatus.ACTIVA, ReservaStatus.PROGRAMADA]) // ✅ Incluir programadas
+        .order('timestamp_reserva', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (error?.code === 'PGRST116') return null; // No encontrado
-    if (error) {
-      console.error('❌ Error obteniendo reserva activa:', error);
-      throw new Error('Error al obtener la reserva activa');
-    }
-
-    // Si es una reserva activa, verificar que no haya expirado
-    if (reserva.estado_reserva === ReservaStatus.ACTIVA) {
-      const ahora = new Date();
-      const expiracion = new Date(reserva.timestamp_expiracion);
-      if (ahora > expiracion) {
-        return null; // Reserva expirada
+      if (error?.code === 'PGRST116') return null; // No encontrado
+      if (error) {
+        console.error('❌ Error obteniendo reserva activa:', error);
+        throw new Error('Error al obtener la reserva activa');
       }
+
+      // Si es una reserva activa, verificar que no haya expirado
+      if (reserva.estado_reserva === ReservaStatus.ACTIVA) {
+        const ahora = new Date();
+        const expiracion = new Date(reserva.timestamp_expiracion);
+        if (ahora > expiracion) {
+          return null; // Reserva expirada
+        }
+      }
+
+      return reserva;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerReservaActiva:', error);
+      return null;
     }
-
-    return reserva;
-
-  } catch (error) {
-    console.error('❌ Error en obtenerReservaActiva:', error);
-    return null;
   }
-}
 
-// Método auxiliar para obtener detalles de la reserva activa/programada
-async obtenerDetallesReservaActiva(usuarioId) {
-  try {
-    const { data: reservas, error } = await supabase
-      .from(reservaTable)
-      .select(`
+  // Método auxiliar para obtener detalles de la reserva activa/programada
+  async obtenerDetallesReservaActiva(usuarioId) {
+    try {
+      const { data: reservas, error } = await supabase
+        .from(reservaTable)
+        .select(`
         id,
         bicicleta_id,
         numero_serie,
@@ -1509,43 +1521,43 @@ async obtenerDetallesReservaActiva(usuarioId) {
           estado
         )
       `)
-      .eq('usuario_id', usuarioId)
-      .in('estado_reserva', [ReservaStatus.ACTIVA, ReservaStatus.PROGRAMADA])
-      .order('timestamp_reserva', { ascending: false });
+        .eq('usuario_id', usuarioId)
+        .in('estado_reserva', [ReservaStatus.ACTIVA, ReservaStatus.PROGRAMADA])
+        .order('timestamp_reserva', { ascending: false });
 
-    if (error) {
-      console.error('❌ Error obteniendo detalles de reserva:', error);
-      return null;
-    }
-
-    if (!reservas || reservas.length === 0) {
-      return null;
-    }
-
-    const ahora = new Date();
-    
-    // Encontrar la reserva válida más reciente
-    const reservaValida = reservas.find(reserva => {
-      if (reserva.estado_reserva === ReservaStatus.ACTIVA) {
-        return new Date(reserva.timestamp_expiracion) > ahora;
-      } else if (reserva.estado_reserva === ReservaStatus.PROGRAMADA) {
-        return new Date(reserva.timestamp_programada) > ahora;
+      if (error) {
+        console.error('❌ Error obteniendo detalles de reserva:', error);
+        return null;
       }
-      return false;
-    });
 
-    return reservaValida || null;
+      if (!reservas || reservas.length === 0) {
+        return null;
+      }
 
-  } catch (error) {
-    console.error('❌ Error en obtenerDetallesReservaActiva:', error);
-    return null;
+      const ahora = new Date();
+
+      // Encontrar la reserva válida más reciente
+      const reservaValida = reservas.find(reserva => {
+        if (reserva.estado_reserva === ReservaStatus.ACTIVA) {
+          return new Date(reserva.timestamp_expiracion) > ahora;
+        } else if (reserva.estado_reserva === ReservaStatus.PROGRAMADA) {
+          return new Date(reserva.timestamp_programada) > ahora;
+        }
+        return false;
+      });
+
+      return reservaValida || null;
+
+    } catch (error) {
+      console.error('❌ Error en obtenerDetallesReservaActiva:', error);
+      return null;
+    }
   }
-}
 
-async obtenerHistorialViajes(usuarioId, limite = 10) {
-  const { data: viajes, error } = await supabase
-    .from(reservaTable)
-    .select(`
+  async obtenerHistorialViajes(usuarioId, limite = 10) {
+    const { data: viajes, error } = await supabase
+      .from(reservaTable)
+      .select(`
       id,
       bicicleta_id,
       numero_serie,
@@ -1558,18 +1570,18 @@ async obtenerHistorialViajes(usuarioId, limite = 10) {
         tipo
       )
     `)
-    .eq('usuario_id', usuarioId)
-    .in('estado_reserva', [ReservaStatus.COMPLETADA, ReservaStatus.CANCELADA, ReservaStatus.EXPIRADA])
-    .order('timestamp_reserva', { ascending: false })
-    .limit(limite);
+      .eq('usuario_id', usuarioId)
+      .in('estado_reserva', [ReservaStatus.COMPLETADA, ReservaStatus.CANCELADA, ReservaStatus.EXPIRADA])
+      .order('timestamp_reserva', { ascending: false })
+      .limit(limite);
 
-  if (error) {
-    console.error('❌ Error obteniendo historial de viajes:', error);
-    throw new Error('Error al obtener el historial de viajes');
+    if (error) {
+      console.error('❌ Error obteniendo historial de viajes:', error);
+      throw new Error('Error al obtener el historial de viajes');
+    }
+
+    return viajes || [];
   }
-
-  return viajes || [];
-}
 }
 
 export const bookingHandler = new BookingHandler();
