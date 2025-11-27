@@ -1,9 +1,7 @@
-import getTimer from "mqtt/lib/get-timer";
 import { bikeHandler, BikeStatus,
-  BatteryStatus } from "../services/bike/bike-handler";
-import { BikeStatus } from "../services/bike/bike-handler";
-import { Telemetria, bicicletaService } from "../services/bike/bike.services";
-import { TOPICS } from "./topics";
+  BatteryStatus, BatteryLevel } from "../services/bike/bike-handler.js";
+import { Telemetria, bicicletaService } from "../services/bike/bike.services.js";
+import { TOPICS } from "./topics.js";
 
 const mqtt = require('mqtt');
 
@@ -16,6 +14,9 @@ function mod(x,n) {
 
 // tiempo de duracion de una linea de bateria
 const BATTERY_TIME_MS = 1000 * 4;
+
+// intervalo de espera para reporte de telemetria
+const TELEMETRY_PERIOD_MS = 1000 * 20;
 
 // tiempo de espera
 const ABANDON_WAIT_TIME_MINUTES = 80;
@@ -38,7 +39,7 @@ class Bike {
 
     this.client.on('connect', () => {
       console.log(`Bicicleta IoT #${id} reportando telemetría`);
-      client.subscribe(TOPICS.viaje);
+      this.client.subscribe(TOPICS.viaje);
     });
 
     this.client.on('message', (topic, message) => {
@@ -57,7 +58,54 @@ class Bike {
   }
 
   async simulate() {
-    // TODO: transferir logica de simulacion a la clase.
+    const startTime = new Date();
+    var ellapsed = undefined;
+    while (true) {
+      ellapsed = (new Date()) - startTime;
+
+      if (this.bike.estado !== BikeStatus.EN_USO) {
+        switch (this.bike.estado) {
+        case BikeStatus.BLOQUEADA:
+          continue;
+        
+        }
+      }
+      
+      // si el tiempo en uso es mayor a ABANDON_WAIT_TIME
+      if (ellapsed/(1000*60) > ABANDON_WAIT_TIME_MINUTES) {
+        this.bike.estado = BikeStatus.ABANDONADA;
+      }
+
+      // 
+      if (bike.tipo === 'Electrica') {
+        if (this.telemetry.bateria === BatteryLevel.zero) {
+          // TODO: reporte para bateria descargada
+          break;
+        }
+        if (this.telemetry.bateria <= BatteryLevel.low) {
+          // TODO: implementar advertencia de bateria baja
+        }
+        this.telemetry.bateria -= Math.floor(ellapsed / BATTERY_TIME_MS);
+      }
+
+      this.client.publish(TOPICS.telemetria, JSON.stringify({
+        bike: this.bike,
+        telemetry: this.telemetry
+      }));
+
+      // si el tiempo transcurrido en la iteracion es menor al intervalo,
+      // esperar hasta completar el intervalo
+      wait(TELEMETRY_PERIOD_MS - ellapsed + (new Date()));
+    }
+  }
+}
+
+function wait(ms) {
+  if (ms <= 0) return 0;
+  const start = new Date();
+  var now = new Date();
+  while (now - start < ms) {
+    now = new Date();
   }
 }
 
@@ -65,10 +113,7 @@ async function simulate(bike, telemetry) {
   const startTime = new Date();
   var ellapsed = undefined;
   while (true) {
-    {
-      const now = new Date();
-      ellapsed = now - startTime;
-    }
+    ellapsed = (new Date()) - startTime;
 
     if (bike.estado !== BikeStatus.EN_USO) continue;
     
@@ -81,10 +126,10 @@ async function simulate(bike, telemetry) {
       bike.bateria -= Math.floor(ellapsed / BATTERY_TIME_MS);
     }
 
-    client.publish
+    //client.publish
   }
 }
-
+/*
 function startup(id) {
   // se inicializa un cliente separado ya que el proceso es 
   // independiente al servidor
@@ -121,3 +166,9 @@ function startup(id) {
 
   simulate(self);
 }
+*/
+
+var bikes = [new Bike(), new Bike(), new Bike()];
+const ids = ['E001', 'E002', 'E003'];
+for (i in range(0,3))
+  bikes[i].init(ids[i]);

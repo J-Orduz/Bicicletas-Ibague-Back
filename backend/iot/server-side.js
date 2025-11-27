@@ -10,13 +10,13 @@ const mqtt = require('mqtt');
 // servidor principal
 const client = mqtt.connect('mqtt://localhost:1883');
 
-// async function sendTelemetry(data) {
-//   await bicicletaService.registrarTelemetria(data.telemetry);
-// }
+async function sendTelemetry(data) {
+  await bicicletaService.registrarTelemetria(data.telemetry);
+}
 
-// async function updateStatus(data) {
-//   await bikeHandler.changeStatus(data.id, data.status);
-// }
+async function updateStatus(data) {
+  await bikeHandler.changeStatus(data.id, data.status);
+}
 
 import { eventBus } from "../event-bus/index.js";
 import { CHANNELS } from "../event-bus/channels.js";
