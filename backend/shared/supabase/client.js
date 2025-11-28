@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv';
 
 // Cargar variables de entorno
+console.log("[CLIENT] loading dotenv...");
 dotenv.config();
 
 export const supabase = createClient(
