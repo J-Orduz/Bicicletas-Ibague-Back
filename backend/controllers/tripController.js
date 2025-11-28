@@ -1,7 +1,7 @@
 
 import { tripHandler } from "../services/trip/trip-handler.js";
 import { supabase } from "../shared/supabase/client.js";
-
+import { ESTADO_PAGO } from "../services/trip/trip-handler.js";
 
 
 
@@ -39,6 +39,46 @@ const extractUserFromToken = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       message: 'Error de autenticación'
+    });
+  }
+};
+
+
+export const setPagoViajeExitoso = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { viajeId } = req.body;
+
+    if (!viajeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'El ID del viaje es obligatorio'
+      });
+    }
+
+    console.log(`💳 Procesando pago exitoso para viaje: ${viajeId}, usuario: ${usuarioId}`);
+
+    // Cambiar estado de pago a PAGADO
+    const viajeActualizado = await tripHandler.changeStatus(viajeId, ESTADO_PAGO.PAGADO);
+
+    if (!viajeActualizado) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró el viaje o no fue posible actualizar el estado'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Pago registrado exitosamente',
+      data: viajeActualizado
+    });
+
+  } catch (error) {
+    console.error('❌ Error registrando pago del viaje:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al registrar el pago del viaje'
     });
   }
 };
@@ -124,5 +164,8 @@ export const getViajes = async (req, res) => {
 
 
 
+
+
 export const finalizarViajeAuth = [extractUserFromToken, finalizarViaje];
 export const getViajesAuth = [extractUserFromToken, getViajes];
+export const setPagoViajeExitosoAuth=[extractUserFromToken, setPagoViajeExitoso];

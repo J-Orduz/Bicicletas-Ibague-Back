@@ -2,6 +2,7 @@ import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
 
+
 const tripTable = "Viaje";
 
 /* ===================== ENUMS ===================== */
@@ -235,25 +236,7 @@ class TripHandler {
     };
   }
 
-  async changeStatus(tripId, status) {
 
-
-    const { data, error } = await supabase
-      .from(tripTable)
-      .update({ estadoPago: status })
-      .eq("id", tripId)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Error actualizando estado: ${error.message}`);
-    }
-
-
-
-    console.log(`✅ Estado actualizado: ${data.numero_serie} -> ${status}`);
-    return data;
-  }
   async changeStatus(tripId, status) {
 
 
@@ -290,7 +273,7 @@ class TripHandler {
     }
 
     // Verificar el tipo de viaje
-    const tipoViaje = this.verificarTipoViaje(viaje.estacionInicio, viaje.estacionFin);
+    const tipoViaje = this.verificarTipoViaje(viaje.estacionInicio.tipoEstacion, viaje.estacionFin.tipoEstacion);
 
     if (tipoViaje === estadoPago.ERROR) {
       return "Tipo de viaje no válido, intente nuevamente más tarde";
@@ -303,6 +286,12 @@ class TripHandler {
     await this.modificarTipoyEstadoViaje(viajeId, tipoViaje, estado);
 
     return viaje;
+  }
+  verificarTipoViaje(inicio, fin) {
+    if (inicio === tipoEstacion.METRO || fin === tipoEstacion.METRO) {
+      return tipoRecorrido.MILLA;
+    }
+    return tipoRecorrido.LARGO;
   }
 
 
@@ -354,6 +343,7 @@ class TripHandler {
     const { data, error } = await supabase.from(tripTable).select("*");
     if (error) throw new Error("Error obteniendo viajes");
     return data;
+
   }
 
 
