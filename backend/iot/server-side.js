@@ -1,6 +1,8 @@
 import * as bikeController from "../controllers/bikeController.js"
 import { bicicletaService } from "../services/bike/bike.services.js";
-import { bikeHandler } from "../services/bike/bike-handler.js";
+import { bikeHandler }
+  from "../services/bike/bike-handler.js";
+import { BatteryStatus, Telemetria } from "../services/bike/state.js";
 
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -25,19 +27,31 @@ import { TOPICS } from "./topics.js";
 export function initMqttClient() {
   console.log("[MQTT] Conectandose al broker mqtt...");
   client.on('connect', () => {
-    console.log("Successful connection to the mqtt broker");
+    console.log("[MQTT] Successful connection to the mqtt broker");
 
-    // el dispositivo se suscribe a los canales despues de conectarse exitosamente al broker
-    client.subscribe('bikes/+/telemetry', async (data) => {
-      await bicicletaService.registrarTelemetria(data);
-    });
-    client.subscribe('bikes/+/status', async (id, status) => {
-    await bikeHandler.changeStatus(id, status);
-    });
+    // el dispositivo se suscribe a los canales despues de conectarse
+    // exitosamente al broker
+    client.subscribe(TOPICS.BIKE.init);
+    client.subscribe(TOPICS.BIKE.telemetria);
   });
 
-  client.on('message', (topic, buffer) => {
-    console.log(`Message from ${topic}`);
-    
+  client.on('message', async (topic, buffer) => {
+    console.log(`[MQTT] Message from ${topic}`);
+    const data = JSON.parse(buffer);
+    switch (topic) {
+    case TOPICS.BIKE.init:
+      let bike = await bikeHandler.getBike(data.id);
+      //console.log(`[MQTT] Bike id ${bike}`);
+      let est = bicicletaService.getEstacion(bike.idEstacion);
+      let bateria = (bike.tipo === 'Electrica')? 0xf : null;
+      let telem = new Telemetria(est.posicion.longitud,
+        est.posicion.latitud, bateria, BatteryStatus.CARGADA);
+      client.publish(TOPICS.CLIENT.bikedata,
+        JSON.stringify({id: bike.id, telemetry: telem, bike: bike}));
+      break;
+    case TOPICS.BIKE.telemetria:
+      bicicletaService.registrarTelemetria(data.telemetry);
+      break;
+    }
   });
 }
