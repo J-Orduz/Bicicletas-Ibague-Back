@@ -1,30 +1,10 @@
 import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
+import { BikeStatus } from "./state.js"
 
 const bikeTable = "Bicicleta";
 const dockTable = "Docks";
-
-export const BikeStatus = {
-  EN_USO: 'En_Viaje',
-  DISPONIBLE: 'Disponible',
-  BLOQUEADA: 'Bloqueada',
-  MANTENIMIENTO: 'Mantenimiento',
-  RESERVADA: 'Reservada',
-  ABANDONADA: 'Abandonada'
-};
-
-export const BatteryStatus = {
-  CARGADA: 'Cargada',
-  BAJA: 'Baja',
-  DAMAGED: 'Dañada',
-};
-
-export const BatteryLevel = {
-  full: 0xff,
-  low: 0xff / 4,
-  zero: 0,
-};
 
 class BikeHandler {
   constructor() { }
