@@ -36,7 +36,11 @@ export const consumedEvents = {
     const { bikeId } = event.data;
     await bikeHandler.changeStatus(bikeId, BikeStatus.BLOQUEADA);
   },
-    estacion_inicio_viaje: async (event) => {
+  estacion_inicio_viaje: async (event) => {
     await bikeHandler.getEstacionDeBicicleta(event.data);
+  },
+  asignar_estacion_nueva: async (event) => {
+    const {estacionDestino,bicicletaId}=event.data;
+    await bikeHandler.setStationViaje(estacionDestino,bicicletaId);
   }
 };

@@ -2,40 +2,40 @@ export const producedEvents = {
   // Eventos de Reserva
   bicicleta_reservada: {
     type: "bicicleta_reservada",
-    data: { 
-      bikeId: "", 
-      usuarioId: "", 
-      numero_serie: "", 
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
       reservaId: "",
-      timestamp: "", 
+      timestamp: "",
       expiracion: "",
-      tiempo_reserva: 0 
+      tiempo_reserva: 0
     }
   },
   reserva_cancelada: {
     type: "reserva_cancelada",
-    data: { 
-      bikeId: "", 
-      usuarioId: "", 
-      numero_serie: "", 
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
       reservaId: "",
       timestamp: "",
-      motivo: "" 
+      motivo: ""
     }
   },
   reserva_expirada: {
     type: "reserva_expirada",
-    data: { 
-      bikeId: "", 
-      usuarioId: "", 
-      numero_serie: "", 
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
       reservaId: "",
-      timestamp: "", 
-      expiracion_original: "" 
+      timestamp: "",
+      expiracion_original: ""
     }
   },
   reserva_completada: {
-    type: "reserva_completada", 
+    type: "reserva_completada",
     data: {
       bikeId: "",
       usuarioId: "",
@@ -44,7 +44,7 @@ export const producedEvents = {
       timestamp: ""
     }
   },
-  
+
   // Eventos de Viaje
   viaje_iniciado: {
     type: "viaje_iniciado",
@@ -69,18 +69,18 @@ export const producedEvents = {
     }
   },
   reserva_programada: {
-  type: "reserva_programada",
-  data: { 
-    bikeId: "", 
-    usuarioId: "", 
-    numero_serie: "", 
-    reservaId: "",
-    timestamp_programada: "",
-    timestamp_creacion: ""
-  }
+    type: "reserva_programada",
+    data: {
+      bikeId: "",
+      usuarioId: "",
+      numero_serie: "",
+      reservaId: "",
+      timestamp_programada: "",
+      timestamp_creacion: ""
+    }
   },
   reserva_activada: {
-    type: "reserva_activada", 
+    type: "reserva_activada",
     data: {
       bikeId: "",
       usuarioId: "",
@@ -96,6 +96,13 @@ export const producedEvents = {
       reservaId: "",
       motivo: "",
       timestamp: ""
+    }
+  },
+  asignar_estacion_nueva: {
+    type: "asignar_estacion_nueva",
+    data: {
+      estacionDestino: idEstacion,
+      bicicletaId: data.bicicleta_id,
     }
   }
 };

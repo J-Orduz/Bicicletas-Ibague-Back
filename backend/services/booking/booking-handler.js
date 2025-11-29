@@ -1409,6 +1409,41 @@ class BookingHandler {
     return `${minutos}m`;
   }
 
+  async getBicicletaViaje(idReserva, idEstacion) {
+    if (!idReserva || !idEstacion) {
+      throw new Error('idReserva y idEstacion son obligatorios');
+    }
+
+    const { data, error } = await supabase
+      .from(reservaTable)
+      .select('bicicleta_id')
+      .eq('id', idReserva)
+      .single();
+
+    if (error) {
+      console.error('❌ Error obteniendo id de la bicicleta:', error);
+      throw new Error('Error al obtener el id de bicicleta');
+    }
+
+    if (!data?.bicicleta_id) {
+      throw new Error(`La reserva ${idReserva} no tiene bicicleta asignada`);
+    }
+
+    try {
+      await eventBus.publish(CHANNELS.BICICLETAS, {
+        type: "asignar_estacion_nueva",
+        data: {
+          estacionDestino: idEstacion,
+          bicicletaId: data.bicicleta_id,
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error publicando evento de bicicleta:', err);
+      throw new Error('Error al notificar la estación de la bicicleta');
+    }
+  }
+
+
 
   // === MÉTODOS DE CONSULTA ===
 

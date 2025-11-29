@@ -117,6 +117,15 @@ class TripHandler {
       });
     }
 
+    /*================BICICLETA (ESTACIÓN)=================== */
+    await eventBus.publish(CHANNELS.RESERVAS, {
+      type: "buscar_reserva",
+      data: {
+        estacionDestino: viajeActualizado.estacionFin,
+        reservaId: viajeActualizado.idReserva,
+      }
+    });
+
     return viajeActualizado;
   }
 

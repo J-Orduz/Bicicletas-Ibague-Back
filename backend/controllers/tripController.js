@@ -45,6 +45,7 @@ const extractUserFromToken = async (req, res, next) => {
 
 
 export const finalizarViaje = async (req, res) => {
+  const usuarioId = req.body.id;
   try {
 
     const { viajeId } = req.body;

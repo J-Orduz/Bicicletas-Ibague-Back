@@ -228,6 +228,33 @@ class BikeHandler {
 
     return data;
   }
+
+  async setStationViaje(nuevaEstacion, bicicletaId) {
+
+    if (!nuevaEstacion || !bicicletaId) {
+      throw new Error('nuevaEstacion y bicicletaId son obligatorios');
+    }
+
+    const { data, error, count } = await supabase
+      .from(bikeTable)
+      .update({ idEstacion: nuevaEstacion, estado: BikeStatus.DISPONIBLE })
+      .eq('id', bicicletaId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error actualizando estación de bicicleta:', error);
+      throw new Error('No se pudo actualizar la estación de la bicicleta');
+    }
+
+    if (!data) {
+      throw new Error(`No se encontró la bicicleta con id ${bicicletaId}`);
+    }
+
+    return data;
+  }
+
+
   async getEstacionDeBicicleta(data) {
     const { reservaId, id } = data;
     const { estacion, error } = await supabase
