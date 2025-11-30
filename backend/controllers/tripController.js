@@ -68,6 +68,35 @@ export const setPagoViajeExitoso = async (req, res) => {
       });
     }
 
+    //Sumar 2 puntos al perfil del usuario
+    const { data: perfil, error: errorPerfil } = await supabase
+      .from('profiles')
+      .select('puntos')
+      .eq('id', usuarioId)
+      .single();
+
+    if (errorPerfil) {
+      console.error('❌ Error obteniendo perfil:', errorPerfil);
+      // No retornes error aquí, solo loguea el error
+    } else {
+      // Actualizar puntos sumando 2
+      const nuevosPuntos = (perfil.puntos || 0) + 2;
+      
+      const { error: errorUpdate } = await supabase
+        .from('profiles')
+        .update({ 
+          puntos: nuevosPuntos,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', usuarioId);
+
+      if (errorUpdate) {
+        console.error('❌ Error actualizando puntos:', errorUpdate);
+      } else {
+        console.log(`✅ Puntos actualizados: usuario ${usuarioId} ahora tiene ${nuevosPuntos} puntos`);
+      }
+    }  
+
     res.status(200).json({
       success: true,
       message: 'Pago registrado exitosamente',
