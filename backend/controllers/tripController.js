@@ -322,6 +322,16 @@ export const canjearPuntosDescuento = async (req, res) => {
       }
     });
 
+    // 6. Actualizar el viaje con el nuevo precio
+    const { data: viajeActualizadoo, error: errorActualizarViajee } = await supabase
+      .from('Viaje')
+      .update({
+        precioTotal: precioOriginal
+      })
+      .eq('id', viajeId)
+      .select()
+      .single();
+
   } catch (error) {
     console.error('❌ Error canjeando puntos:', error);
     res.status(500).json({
