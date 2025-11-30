@@ -388,19 +388,35 @@ class TripHandler {
 
   async verificarEstacionVacia(estacionId) {
     try {
-      // Publicar evento para redistribución
-      await eventBus.publish(CHANNELS.ESTACIONES, {
-        type: "estacion_vacia",
-        data: {
-          estacionId: estacionId,
-          timestamp: new Date().toISOString(),
-          tipo: "redistribucion_automatica"
-        }
-      });
+        // Verificar que la estación realmente esté vacía antes de disparar redistribución
+        const { data: estacion, error } = await supabase
+            .from('Estacion')
+            .select('cantidadBicicletas, fecha_redistribucion')
+            .eq('id', estacionId)
+            .single();
+            
+        if (error) throw error;
+        
+        // Solo disparar redistribución si realmente está vacía y no tiene redistribución pendiente
+        if (estacion.cantidadBicicletas === 0 && !estacion.fecha_redistribucion) {
+            // Publicar evento para redistribución
+            await eventBus.publish(CHANNELS.ESTACIONES, {
+                type: "estacion_vacia",
+                data: {
+                    estacionId: estacionId,
+                    timestamp: new Date().toISOString(),
+                    tipo: "redistribucion_automatica"
+                }
+            });
 
-      console.log(`🚨 Estación ${estacionId} quedó vacía - Disparando redistribución`);
+            console.log(`🚨 Estación ${estacionId} quedó vacía - Disparando redistribución`);
+        } else if (estacion.fecha_redistribucion) {
+            console.log(`ℹ️ Estación ${estacionId} ya tiene redistribución programada para: ${estacion.fecha_redistribucion}`);
+        } else {
+            console.log(`ℹ️ Estación ${estacionId} no está vacía (cantidad: ${estacion.cantidadBicicletas})`);
+        }
     } catch (error) {
-      console.error('Error en verificarEstacionVacia:', error);
+        console.error('Error en verificarEstacionVacia:', error);
     }
   }
 

@@ -87,6 +87,39 @@ class StationHandler {
     async manejarEstacionVacia(estacionId) {
         try {
             console.log(`🔄 Iniciando redistribución AUTOMÁTICA para estación ${estacionId}`);
+
+            // Establecer fecha_redistribucion en la base de datos
+            const ahora = new Date();
+            const fechaRedistribucion = new Date(ahora.getTime() + 30 * 60 * 1000); // 30 minutos
+            
+            console.log(`📅 Intentando establecer fecha de redistribución: ${fechaRedistribucion.toISOString()}`);
+            
+            const { error: fechaError } = await supabase
+                .from('Estacion')
+                .update({ 
+                    fecha_redistribucion: fechaRedistribucion.toISOString()
+                })
+                .eq('id', estacionId);
+                
+            if (fechaError) {
+                console.error('❌ Error estableciendo fecha de redistribución:', fechaError);
+                // No lanzamos error aquí para no interrumpir el proceso de redistribución
+            } else {
+                console.log(`✅ Fecha de redistribución establecida en BD: ${fechaRedistribucion.toLocaleString()}`);
+                
+                // Confirmar que se guardó en la BD
+                const { data: estacionVerificada, error: errorVerificacion } = await supabase
+                    .from('Estacion')
+                    .select('fecha_redistribucion')
+                    .eq('id', estacionId)
+                    .single();
+                    
+                if (errorVerificacion) {
+                    console.error('❌ Error verificando fecha en BD:', errorVerificacion);
+                } else {
+                    console.log(`🔍 Fecha en BD después de actualizar: ${estacionVerificada.fecha_redistribucion}`);
+                }
+            }
             
             // 1. Buscar bicicletas disponibles
             const bicicletasParaMover = await this.buscarBicicletasParaRedistribucion(estacionId);
@@ -103,7 +136,7 @@ class StationHandler {
             await this.bloquearBicicletasParaRedistribucion(bicicletasParaMover);
             
             // 3. PROGRAMAR reasignación 30 minutos
-            const TIEMPO_REDISTRIBUCION = 2 * 60 * 1000;  // 30 minutos
+            const TIEMPO_REDISTRIBUCION = 30 * 60 * 1000;  // 30 minutos 
             console.log(`⏰ Programando reasignación en ${TIEMPO_REDISTRIBUCION/1000} segundos...`);
             
             setTimeout(async () => {
@@ -114,8 +147,8 @@ class StationHandler {
                 }
             }, TIEMPO_REDISTRIBUCION);
             
-            // 4. Notificar
-            await this.notificarRedistribucionAutomatica(estacionId, bicicletasParaMover);
+            // 4. Notificar - Pasar fechaRedistribucion como parámetro
+            await this.notificarRedistribucionAutomatica(estacionId, bicicletasParaMover, fechaRedistribucion);
             
         } catch (error) {
             console.error('❌ Error en manejarEstacionVacia:', error);
@@ -243,7 +276,10 @@ class StationHandler {
             // Actualizar con el conteo real
             const { error: counterError } = await supabase
                 .from('Estacion')
-                .update({ cantidadBicicletas: count })
+                .update({ 
+                    cantidadBicicletas: count,
+                    fecha_redistribucion: null  // Limpiar fecha cuando se completa
+                })
                 .eq('id', estacionDestinoId);
                 
             if (counterError) throw counterError;
@@ -268,13 +304,14 @@ class StationHandler {
         }
     }
 
-    async notificarRedistribucionAutomatica(estacionId, bicicletas) {
+    async notificarRedistribucionAutomatica(estacionId, bicicletas, fechaRedistribucion) {
         await eventBus.publish(CHANNELS.NOTIFICACIONES, {
             type: "redistribucion_automatica_iniciada",
             data: {
                 estacionId: estacionId,
                 cantidadBicicletas: bicicletas.length,
                 bicicletas: bicicletas.map(b => b.id),
+                fecha_redistribucion: fechaRedistribucion.toISOString(),
                 timestamp: new Date().toISOString(),
                 reasignacionProgramada: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
                 mensaje: `Redistribución automática iniciada. ${bicicletas.length} bicicletas serán asignadas en 30 minutos.`
