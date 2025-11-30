@@ -190,11 +190,160 @@ export const getViajes = async (req, res) => {
   }
 };
 
+// Controlador para canjear puntos por descuento
+export const canjearPuntosDescuento = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { viajeId } = req.body;
+
+    if (!viajeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'El ID del viaje es obligatorio'
+      });
+    }
+
+    console.log(`🔄 Canjeando puntos para viaje: ${viajeId}, usuario: ${usuarioId}`);
+
+    // 1. Obtener el perfil del usuario para verificar puntos
+    const { data: perfil, error: errorPerfil } = await supabase
+      .from('profiles')
+      .select('puntos')
+      .eq('id', usuarioId)
+      .single();
+
+    if (errorPerfil || !perfil) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró el perfil del usuario'
+      });
+    }
+
+    const puntosUsuario = perfil.puntos || 0;
+
+    // 2. Verificar si tiene puntos suficientes (mínimo 10 puntos)
+    if (puntosUsuario < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Puntos insuficientes para canjear. Mínimo 10 puntos requeridos.',
+        puntosActuales: puntosUsuario
+      });
+    }
+
+    // 3. Obtener el viaje para ver el precioTotal actual
+    const { data: viaje, error: errorViaje } = await supabase
+      .from('Viaje')
+      .select('precioTotal, estadoPago')
+      .eq('id', viajeId)
+      .single();
+
+    if (errorViaje || !viaje) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró el viaje'
+      });
+    }
+
+    // 4. Verificar que el viaje esté en estado PENDIENTE
+    if (viaje.estadoPago !== 'PENDIENTE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden canjear puntos en viajes con estado PENDIENTE'
+      });
+    }
+
+    const precioOriginal = viaje.precioTotal || 0;
+
+    // 5. Calcular máximo descuento posible basado en puntos y precio
+    const maxPuntosCanjeables = Math.floor(puntosUsuario / 10) * 10; // Múltiplos de 10
+    const maxDescuentoPosible = (maxPuntosCanjeables / 10) * 1000; // 10 puntos = 1.000 descuento
+
+    // El descuento no puede ser mayor al precio total
+    const descuentoAplicar = Math.min(maxDescuentoPosible, precioOriginal);
+    
+    // Calcular puntos a utilizar (redondeado a múltiplos de 10)
+    const puntosUtilizar = Math.floor(descuentoAplicar / 1000) * 10;
+    
+    // Nuevo precio después del descuento
+    const nuevoPrecioTotal = Math.max(0, precioOriginal - descuentoAplicar);
+    
+    // Nuevos puntos del usuario
+    const nuevosPuntos = puntosUsuario - puntosUtilizar;
+    
+    // Determinar si el viaje queda completamente pagado
+    const viajeCompletamentePagado = nuevoPrecioTotal === 0;
+    const nuevoEstadoPago = viajeCompletamentePagado ? ESTADO_PAGO.PAGADO : viaje.estadoPago;
+
+    // 6. Actualizar el viaje con el nuevo precio
+    const { data: viajeActualizado, error: errorActualizarViaje } = await supabase
+      .from('Viaje')
+      .update({
+        precioTotal: nuevoPrecioTotal,
+        estadoPago: nuevoEstadoPago
+      })
+      .eq('id', viajeId)
+      .select()
+      .single();
+
+    if (errorActualizarViaje) {
+      console.error('❌ Error actualizando viaje:', errorActualizarViaje);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al actualizar el precio del viaje'
+      });
+    }
+
+    // 7. Actualizar los puntos del usuario
+    const { error: errorActualizarPuntos } = await supabase
+      .from('profiles')
+      .update({
+        puntos: nuevosPuntos,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', usuarioId);
+
+    if (errorActualizarPuntos) {
+      console.error('❌ Error actualizando puntos:', errorActualizarPuntos);
+      // No retornamos error aquí para no dejar inconsistencia
+    }
+
+    console.log(`✅ Canje exitoso: ${puntosUtilizar} puntos → $${descuentoAplicar} descuento`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Puntos canjeados exitosamente',
+      data: {
+        viaje: viajeActualizado,
+        descuentoAplicado: descuentoAplicar,
+        puntosUtilizados: puntosUtilizar,
+        puntosRestantes: nuevosPuntos,
+        precioOriginal: precioOriginal,
+        precioFinal: nuevoPrecioTotal
+      }
+    });
+
+    // 6. Actualizar el viaje con el nuevo precio
+    const { data: viajeActualizadoo, error: errorActualizarViajee } = await supabase
+      .from('Viaje')
+      .update({
+        precioTotal: precioOriginal
+      })
+      .eq('id', viajeId)
+      .select()
+      .single();
+
+  } catch (error) {
+    console.error('❌ Error canjeando puntos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al canjear puntos'
+    });
+  }
+};
 
 
 
-
-
+export const canjearPuntosDescuentoAuth = [extractUserFromToken, canjearPuntosDescuento];
 export const finalizarViajeAuth = [extractUserFromToken, finalizarViaje];
 export const getViajesAuth = [extractUserFromToken, getViajes];
 export const setPagoViajeExitosoAuth=[extractUserFromToken, setPagoViajeExitoso];
