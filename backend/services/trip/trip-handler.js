@@ -4,6 +4,7 @@ import { CHANNELS } from "../../event-bus/channels.js";
 
 
 const tripTable = "Viaje";
+const stationTable = "Estacion";
 
 /* ===================== ENUMS ===================== */
 
@@ -101,6 +102,11 @@ class TripHandler {
     if (error || !viajeActualizado) {
       console.error("Error Supabase:", error);
       throw new Error("No se pudo actualizar el viaje");
+    }
+
+    // ACTUALIZAR ESTACIÓN DE FINALIZACIÓN (INCREMENTAR)
+    if (trip.estacionFin) {
+      await this.actualizarContadorEstacion(trip.estacionFin, 'incrementar');
     }
 
     /* === EVENTO DE PAGO === */
@@ -346,6 +352,73 @@ class TripHandler {
 
   }
 
+  // Actualiza el contador de bicicletas en una estación
+  async actualizarContadorEstacion(estacionId, operacion) {
+      try {
+          // Hacer conteo real
+          const { count, error: countError } = await supabase
+              .from('Bicicleta')
+              .select('*', { count: 'exact', head: true })
+              .eq('idEstacion', estacionId)
+              .eq('estado', 'Disponible');
+              
+          if (countError) throw countError;
+          
+          // Actualizar con el conteo real
+          const { error: updateError } = await supabase
+              .from(stationTable)
+              .update({ cantidadBicicletas: count })
+              .eq('id', estacionId);
+
+          if (updateError) throw updateError;
+
+          console.log(`✅ Contador actualizado - Estación ${estacionId}: ${count} bicicletas`);
+
+          // Verificar si la estación quedó vacía basado en el conteo real
+          if (count === 0 && operacion === 'decrementar') {
+              await this.verificarEstacionVacia(estacionId);
+          }
+
+          return count;
+      } catch (error) {
+          console.error('Error actualizando contador estación:', error);
+          throw error;
+      }
+  }
+
+  async verificarEstacionVacia(estacionId) {
+    try {
+        // Verificar que la estación realmente esté vacía antes de disparar redistribución
+        const { data: estacion, error } = await supabase
+            .from('Estacion')
+            .select('cantidadBicicletas, fecha_redistribucion')
+            .eq('id', estacionId)
+            .single();
+            
+        if (error) throw error;
+        
+        // Solo disparar redistribución si realmente está vacía y no tiene redistribución pendiente
+        if (estacion.cantidadBicicletas === 0 && !estacion.fecha_redistribucion) {
+            // Publicar evento para redistribución
+            await eventBus.publish(CHANNELS.ESTACIONES, {
+                type: "estacion_vacia",
+                data: {
+                    estacionId: estacionId,
+                    timestamp: new Date().toISOString(),
+                    tipo: "redistribucion_automatica"
+                }
+            });
+
+            console.log(`🚨 Estación ${estacionId} quedó vacía - Disparando redistribución`);
+        } else if (estacion.fecha_redistribucion) {
+            console.log(`ℹ️ Estación ${estacionId} ya tiene redistribución programada para: ${estacion.fecha_redistribucion}`);
+        } else {
+            console.log(`ℹ️ Estación ${estacionId} no está vacía (cantidad: ${estacion.cantidadBicicletas})`);
+        }
+    } catch (error) {
+        console.error('Error en verificarEstacionVacia:', error);
+    }
+  }
 
 
 }

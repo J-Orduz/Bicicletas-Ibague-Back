@@ -76,21 +76,35 @@ class UpstashEventBus {
 
   // Obtener eventos históricos del canal
   async getHistoricalEvents(channel, callback) {
-    try {
-      const events = await this.redis.lrange(`channel:${channel}`, 0, 9); // Últimos 10 eventos
-      console.log(`📚 Obteniendo ${events.length} eventos históricos de: ${channel}`);
-      
-      for (const eventStr of events.reverse()) { // Del más antiguo al más nuevo
-        try {
-          const event = JSON.parse(eventStr);
-          callback(event);
-        } catch (parseError) {
-          console.error('❌ Error parseando evento histórico:', parseError.message);
-        }
+      try {
+          const events = await this.redis.lrange(`channel:${channel}`, 0, 0); // Últimos 1 eventos
+          console.log(`📚 Obteniendo ${events.length} eventos históricos de: ${channel}`);
+          
+          for (const eventStr of events.reverse()) { // Del más antiguo al más nuevo
+              try {
+                  let event;
+                  
+                  // DETECTAR si ya es un objeto o necesita parseo
+                  if (typeof eventStr === 'string') {
+                      // Intentar parsear como JSON
+                      event = JSON.parse(eventStr);
+                  } else if (typeof eventStr === 'object' && eventStr !== null) {
+                      // Ya es un objeto, usarlo directamente
+                      event = eventStr;
+                  } else {
+                      console.log(`⚠️ Formato de evento no reconocido:`, typeof eventStr);
+                      continue;
+                  }
+                  
+                  callback(event);
+              } catch (parseError) {
+                  console.error('❌ Error procesando evento histórico:', parseError.message);
+                  console.log('📄 Contenido del evento:', eventStr);
+              }
+          }
+      } catch (error) {
+          console.error('❌ Error obteniendo eventos históricos:', error.message);
       }
-    } catch (error) {
-      console.error('❌ Error obteniendo eventos históricos:', error.message);
-    }
   }
 }
 

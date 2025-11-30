@@ -5,5 +5,6 @@ export const CHANNELS = {
   VIAJES: 'viajes',
   PAGOS: 'pagos',
   ESTACIONES: 'estaciones',
-  NOTIFICACIONES: 'notificaciones'
+  NOTIFICACIONES: 'notificaciones',
+  LOGISTICA: 'logistica'
 };
