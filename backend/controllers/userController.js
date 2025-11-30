@@ -1,4 +1,42 @@
 import { authService } from '../services/auth/index.js';
+import { supabase } from "../shared/supabase/client.js";
+
+// Middleware para extraer usuario del token
+export const extractUserFromToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token de autorización requerido'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verificar el token con Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido o expirado'
+      });
+    }
+
+    // Agregar usuario a la request
+    req.user = user;
+    next();
+
+  } catch (error) {
+    console.error('❌ Error extrayendo usuario del token:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Error de autenticación'
+    });
+  }
+};
 
 export const registerUser = async (req, res) => {
   try {
@@ -145,7 +183,6 @@ export const loginUser = async (req, res) => {
 };
 
 
-
 // Controlador para obtener perfil
 export const getUserProfile = async (req, res) => {
   try {
@@ -173,8 +210,6 @@ export const getUserProfile = async (req, res) => {
     });
   }
 };
-
-
 
 
 //Controlador para actualizar perfil
@@ -210,6 +245,53 @@ export const updateUserProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+};
+
+
+// Controlador para obtener puntos del usuario
+export const getPuntosUsuario = async (req, res) => {
+  try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado'
+      });
+    }
+
+    // Consultar los puntos del usuario desde la tabla profiles
+    const { data: perfil, error } = await supabase
+      .from('profiles')
+      .select('puntos, nombre, email')
+      .eq('id', usuarioId)
+      .single();
+
+    if (error) {
+      console.error('❌ Error consultando puntos:', error);
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontró el perfil del usuario'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Puntos obtenidos exitosamente',
+      data: {
+        puntos: perfil.puntos || 0,
+        nombre: perfil.nombre,
+        email: perfil.email
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo puntos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al obtener puntos'
     });
   }
 };
