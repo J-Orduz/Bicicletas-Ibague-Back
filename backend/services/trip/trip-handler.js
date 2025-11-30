@@ -104,6 +104,9 @@ class TripHandler {
       throw new Error("No se pudo actualizar el viaje");
     }
 
+    // ACTUALIZAR BICICLETA CON LA NUEVA ESTACIÓN
+    await this.actualizarBicicletaEstacion(viajeActualizado.idReserva, trip.estacionFin);
+
     // ACTUALIZAR ESTACIÓN DE FINALIZACIÓN (INCREMENTAR)
     if (trip.estacionFin) {
       await this.actualizarContadorEstacion(trip.estacionFin, 'incrementar');
@@ -418,6 +421,44 @@ class TripHandler {
     } catch (error) {
         console.error('Error en verificarEstacionVacia:', error);
     }
+  }
+
+  async actualizarBicicletaEstacion(reservaId, estacionId) {
+      try {
+          // Obtener la bicicleta de la reserva
+          const { data: reserva, error } = await supabase
+              .from('Reserva')
+              .select('bicicleta_id')
+              .eq('id', reservaId)
+              .single();
+
+          if (error || !reserva) {
+              console.error('Error obteniendo reserva:', error);
+              return;
+          }
+
+          // Actualizar la bicicleta con la nueva estación
+          const { error: updateError } = await supabase
+              .from('Bicicleta')
+              .update({
+                  idEstacion: estacionId,
+                  estado: 'Disponible'
+              })
+              .eq('id', reserva.bicicleta_id);
+
+          if (updateError) {
+              console.error('Error actualizando bicicleta:', updateError);
+          } else {
+              console.log(`✅ Bicicleta ${reserva.bicicleta_id} asignada a estación ${estacionId}`);
+              
+              // ✅ AGREGAR: Ejecutar función SQL para asegurar contador correcto
+              await supabase
+                  .rpc('actualizar_contador_estacion', { estacion_id: estacionId });
+          }
+
+      } catch (error) {
+          console.error('Error en actualizarBicicletaEstacion:', error);
+      }
   }
 
 
