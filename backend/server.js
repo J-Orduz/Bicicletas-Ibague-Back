@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initializeStationService } from "./services/station/index.js";
 
 // Cargar variables de entorno
 dotenv.config();
@@ -122,5 +123,8 @@ app.listen(PORT, () => {
     .catch((err) =>
       console.warn("No se pudo inicializar payment service", err)
     );
+  
+  initializeStationService();
+  
   //initializeGlobalServices();
 });

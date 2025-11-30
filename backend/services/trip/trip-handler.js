@@ -4,6 +4,7 @@ import { CHANNELS } from "../../event-bus/channels.js";
 
 
 const tripTable = "Viaje";
+const stationTable = "Estacion";
 
 /* ===================== ENUMS ===================== */
 
@@ -101,6 +102,11 @@ class TripHandler {
     if (error || !viajeActualizado) {
       console.error("Error Supabase:", error);
       throw new Error("No se pudo actualizar el viaje");
+    }
+
+    // ACTUALIZAR ESTACIÓN DE FINALIZACIÓN (INCREMENTAR)
+    if (trip.estacionFin) {
+      await this.actualizarContadorEstacion(trip.estacionFin, 'incrementar');
     }
 
     /* === EVENTO DE PAGO === */
@@ -346,6 +352,57 @@ class TripHandler {
 
   }
 
+  // Actualiza el contador de bicicletas en una estación
+  async actualizarContadorEstacion(estacionId, operacion) {
+    try {
+      const { data: estacion, error } = await supabase
+        .from(stationTable)
+        .select('cantidadBicicletas')
+        .eq('id', estacionId)
+        .single();
+
+      if (error) throw error;
+
+      const nuevaCantidad = operacion === 'incrementar' 
+        ? estacion.cantidadBicicletas + 1 
+        : estacion.cantidadBicicletas - 1;
+
+      const { error: updateError } = await supabase
+        .from(stationTable)
+        .update({ cantidadBicicletas: nuevaCantidad })
+        .eq('id', estacionId);
+
+      if (updateError) throw updateError;
+
+      // Verificar si la estación quedó vacía
+      if (nuevaCantidad === 0 && operacion === 'decrementar') {
+        await this.verificarEstacionVacia(estacionId);
+      }
+
+      return nuevaCantidad;
+    } catch (error) {
+      console.error('Error actualizando contador estación:', error);
+      throw error;
+    }
+  }
+
+  async verificarEstacionVacia(estacionId) {
+    try {
+      // Publicar evento para redistribución
+      await eventBus.publish(CHANNELS.ESTACIONES, {
+        type: "estacion_vacia",
+        data: {
+          estacionId: estacionId,
+          timestamp: new Date().toISOString(),
+          tipo: "redistribucion_automatica"
+        }
+      });
+
+      console.log(`🚨 Estación ${estacionId} quedó vacía - Disparando redistribución`);
+    } catch (error) {
+      console.error('Error en verificarEstacionVacia:', error);
+    }
+  }
 
 
 }

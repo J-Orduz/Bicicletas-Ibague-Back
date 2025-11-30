@@ -1,6 +1,7 @@
 import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
+import { tripHandler } from "../trip/trip-handler.js";
 
 const reservaTable = "Reserva";
 const bikeTable = "Bicicleta";
@@ -25,7 +26,8 @@ export const MotivoFinalizacion = {
 export const BikeStatus = {
   EN_USO: 'En_Viaje',
   DISPONIBLE: 'Disponible',
-  RESERVADA: 'Reservada'
+  RESERVADA: 'Reservada',
+  EN_REDISTRIBUCION: 'En_Redistribucion'
 };
 export const tipoBicicleta = {
   ELECTRICA: 'Electrica',
@@ -723,6 +725,7 @@ class BookingHandler {
         .from(bikeTable)
         .update({
           estado: BikeStatus.EN_USO,
+          idEstacion: null,
           reserva_usuario_id: null,
           reserva_timestamp: null,
           reserva_expiracion: null
@@ -730,6 +733,15 @@ class BookingHandler {
         .eq("id", bikeId)
         .select()
         .single();
+
+      // Obtener la estación de inicio de la bicicleta
+      const estacionInicioId = bicicleta.idEstacion;
+
+      if (estacionInicioId) {
+          await tripHandler.actualizarContadorEstacion(estacionInicioId, 'decrementar');
+      } else {
+          console.log('⚠️ Bicicleta no tiene estación de inicio asignada');
+      }
 
       if (updateError) {
         throw new Error(`Error al iniciar viaje: ${updateError.message}`);
