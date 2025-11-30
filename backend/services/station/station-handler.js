@@ -102,8 +102,8 @@ class StationHandler {
             // 2. BLOQUEAR BICICLETAS (idEstacion = NULL, estado = EN_REDISTRIBUCION)
             await this.bloquearBicicletasParaRedistribucion(bicicletasParaMover);
             
-            // 3. PROGRAMAR reasignación en 1 minuto (para testing) o 30 minutos (producción)
-            const TIEMPO_REDISTRIBUCION = 3 * 60 * 1000; // 1 minuto para testing
+            // 3. PROGRAMAR reasignación 30 minutos
+            const TIEMPO_REDISTRIBUCION = 2 * 60 * 1000;  // 30 minutos
             console.log(`⏰ Programando reasignación en ${TIEMPO_REDISTRIBUCION/1000} segundos...`);
             
             setTimeout(async () => {
@@ -128,6 +128,24 @@ class StationHandler {
             const bikeIds = bicicletas.map(b => b.id);
             
             console.log(`🔒 Bloqueando ${bikeIds.length} bicicletas para redistribución...`);
+
+            // Obtener las estaciones de origen ANTES de actualizar
+            const estacionesOrigen = [...new Set(bicicletas.map(b => b.idEstacion).filter(id => id !== null))];
+            console.log(`🏪 Estaciones de origen afectadas:`, estacionesOrigen);
+
+            // Obtener cantidadBicicletas actual de cada estación
+            const contadoresAntes = {};
+            for (const estacionId of estacionesOrigen) {
+                const { data: estacion, error } = await supabase
+                    .from('Estacion')
+                    .select('cantidadBicicletas')
+                    .eq('id', estacionId)
+                    .single();
+                if (!error && estacion) {
+                    contadoresAntes[estacionId] = estacion.cantidadBicicletas;
+                }
+            }
+            console.log(`📊 Contadores antes de quitar bicicletas:`, contadoresAntes);
             
             const { error } = await supabase
                 .from('Bicicleta')
@@ -138,6 +156,30 @@ class StationHandler {
                 .in('id', bikeIds);
                 
             if (error) throw error;
+
+             // Actualizar manualmente cantidadBicicletas para cada estación de origen
+            for (const estacionId of estacionesOrigen) {
+                // Contar bicicletas que todavía tienen esta estación como idEstacion
+                const { count, error: countError } = await supabase
+                    .from('Bicicleta')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('idEstacion', estacionId)
+                    .eq('estado', 'Disponible');
+                    
+                if (!countError) {
+                    const nuevaCantidad = count;
+                    const { error: updateError } = await supabase
+                        .from('Estacion')
+                        .update({ cantidadBicicletas: nuevaCantidad })
+                        .eq('id', estacionId);
+                        
+                    if (!updateError) {
+                        console.log(`✅ Estación ${estacionId} actualizada: ${contadoresAntes[estacionId]} -> ${nuevaCantidad} bicicletas`);
+                    } else {
+                        console.error(`❌ Error actualizando estación ${estacionId}:`, updateError);
+                    }
+                }
+            }
             
             console.log(`✅ ${bikeIds.length} bicicletas bloqueadas exitosamente`);
             
@@ -167,6 +209,17 @@ class StationHandler {
             
             const bikeIds = bicicletas.map(b => b.id);
             
+            // Obtener cantidadBicicletas actual ANTES de la actualización
+            const { data: estacionAntes, error: estacionAntesError } = await supabase
+                .from('Estacion')
+                .select('cantidadBicicletas')
+                .eq('id', estacionDestinoId)
+                .single();
+                
+            if (!estacionAntesError) {
+                console.log(`📊 Estación ${estacionDestinoId} antes: ${estacionAntes.cantidadBicicletas} bicicletas`);
+            }
+            
             // 1. Actualizar bicicletas (idEstacion y estado)
             const { error: updateError } = await supabase
                 .from('Bicicleta')
@@ -178,26 +231,25 @@ class StationHandler {
                 
             if (updateError) throw updateError;
             
-            // 2. Actualizar contador de la estación destino
-            const { data: estacion, error: estacionError } = await supabase
-                .from('Estacion')
-                .select('cantidadBicicletas')
-                .eq('id', estacionDestinoId)
-                .single();
+            // Contar las bicicletas actuales
+            const { count, error: countError } = await supabase
+                .from('Bicicleta')
+                .select('*', { count: 'exact', head: true })
+                .eq('idEstacion', estacionDestinoId)
+                .eq('estado', 'Disponible');
                 
-            if (estacionError) throw estacionError;
+            if (countError) throw countError;
             
-            const nuevaCantidad = estacion.cantidadBicicletas + bicicletas.length;
-            
+            // Actualizar con el conteo real
             const { error: counterError } = await supabase
                 .from('Estacion')
-                .update({ cantidadBicicletas: nuevaCantidad })
+                .update({ cantidadBicicletas: count })
                 .eq('id', estacionDestinoId);
                 
             if (counterError) throw counterError;
             
             console.log(`✅ ${bicicletas.length} bicicletas reasignadas a estación ${estacionDestinoId}`);
-            console.log(`📊 Nueva cantidad en estación: ${nuevaCantidad} bicicletas`);
+            console.log(`📊 Nueva cantidad en estación (conteo real): ${count} bicicletas`);
             
             // 3. Publicar evento de redistribución completada
             await eventBus.publish(CHANNELS.ESTACIONES, {

@@ -739,6 +739,15 @@ class BookingHandler {
 
       if (estacionInicioId) {
           await tripHandler.actualizarContadorEstacion(estacionInicioId, 'decrementar');
+          // Verificación adicional - contar bicicletas actuales
+          const { count, error: countError } = await supabase
+              .from('Bicicleta')
+              .select('*', { count: 'exact', head: true })
+              .eq('idEstacion', estacionInicioId)
+              .eq('estado', 'Disponible');
+              if (!countError) {
+                  console.log(`🔍 Verificación - Estación ${estacionInicioId} tiene ${count} bicicletas disponibles`);
+              }
       } else {
           console.log('⚠️ Bicicleta no tiene estación de inicio asignada');
       }

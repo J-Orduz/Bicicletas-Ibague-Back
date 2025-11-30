@@ -354,36 +354,36 @@ class TripHandler {
 
   // Actualiza el contador de bicicletas en una estación
   async actualizarContadorEstacion(estacionId, operacion) {
-    try {
-      const { data: estacion, error } = await supabase
-        .from(stationTable)
-        .select('cantidadBicicletas')
-        .eq('id', estacionId)
-        .single();
+      try {
+          // Hacer conteo real
+          const { count, error: countError } = await supabase
+              .from('Bicicleta')
+              .select('*', { count: 'exact', head: true })
+              .eq('idEstacion', estacionId)
+              .eq('estado', 'Disponible');
+              
+          if (countError) throw countError;
+          
+          // Actualizar con el conteo real
+          const { error: updateError } = await supabase
+              .from(stationTable)
+              .update({ cantidadBicicletas: count })
+              .eq('id', estacionId);
 
-      if (error) throw error;
+          if (updateError) throw updateError;
 
-      const nuevaCantidad = operacion === 'incrementar' 
-        ? estacion.cantidadBicicletas + 1 
-        : estacion.cantidadBicicletas - 1;
+          console.log(`✅ Contador actualizado - Estación ${estacionId}: ${count} bicicletas`);
 
-      const { error: updateError } = await supabase
-        .from(stationTable)
-        .update({ cantidadBicicletas: nuevaCantidad })
-        .eq('id', estacionId);
+          // Verificar si la estación quedó vacía basado en el conteo real
+          if (count === 0 && operacion === 'decrementar') {
+              await this.verificarEstacionVacia(estacionId);
+          }
 
-      if (updateError) throw updateError;
-
-      // Verificar si la estación quedó vacía
-      if (nuevaCantidad === 0 && operacion === 'decrementar') {
-        await this.verificarEstacionVacia(estacionId);
+          return count;
+      } catch (error) {
+          console.error('Error actualizando contador estación:', error);
+          throw error;
       }
-
-      return nuevaCantidad;
-    } catch (error) {
-      console.error('Error actualizando contador estación:', error);
-      throw error;
-    }
   }
 
   async verificarEstacionVacia(estacionId) {
