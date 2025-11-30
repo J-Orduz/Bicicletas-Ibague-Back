@@ -101,8 +101,8 @@ export const producedEvents = {
   asignar_estacion_nueva: {
     type: "asignar_estacion_nueva",
     data: {
-      estacionDestino: idEstacion,
-      bicicletaId: data.bicicleta_id,
+      estacionDestino: "",
+      bicicletaId: "",
     }
   }
 };

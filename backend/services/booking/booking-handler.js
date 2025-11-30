@@ -1430,6 +1430,7 @@ class BookingHandler {
     }
 
     try {
+      // Publicar evento para actualizar la bicicleta
       await eventBus.publish(CHANNELS.BICICLETAS, {
         type: "asignar_estacion_nueva",
         data: {
@@ -1437,6 +1438,9 @@ class BookingHandler {
           bicicletaId: data.bicicleta_id,
         }
       });
+
+      console.log(`✅ Evento asignar_estacion_nueva publicado para bicicleta: ${data.bicicleta_id}, estación: ${idEstacion}`);
+
     } catch (err) {
       console.error('❌ Error publicando evento de bicicleta:', err);
       throw new Error('Error al notificar la estación de la bicicleta');
