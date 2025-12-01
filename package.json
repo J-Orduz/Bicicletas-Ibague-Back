@@ -23,9 +23,12 @@
     "@upstash/redis": "^1.35.6",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "mqtt": "^5.14.1",
     "node-fetch": "^2.6.7",
+    "puppeteer": "^24.31.0",
     "stripe": "^12.18.0"
   }
 }

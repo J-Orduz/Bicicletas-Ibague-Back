@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= reportName %> - Reporte</title>
+    <style>
+      body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #222; background: #fff; }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #3a7bd5;
+        margin-bottom: 18px;
+        padding-bottom: 8px;
+      }
+      .logo {
+        font-size: 22px;
+        font-weight: bold;
+        color: #3a7bd5;
+        letter-spacing: 1px;
+      }
+      .report-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #222;
+        margin-bottom: 2px;
+      }
+      .desc {
+        background: #eef3f7;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+        font-size: 13px;
+      }
+      .meta {
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        margin-bottom: 18px;
+      }
+      th, td {
+        border: 1px solid #c2c2c2;
+        padding: 7px 8px;
+        text-align: left;
+      }
+      th {
+        background: #3a7bd5;
+        color: #fff;
+        font-weight: bold;
+        font-size: 13px;
+      }
+      tr:nth-child(even) td {
+        background: #f7fafd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">BiciIbagué</div>
+      <div class="report-title">Reporte: <%= reportName %></div>
+    </div>
+    <div class="meta">
+      <strong>Generado:</strong> <%= new Date().toLocaleString() %><br />
+      <strong>Filtros:</strong> <%= JSON.stringify(filters || {}) %>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <% if (columns && columns.length > 0) { %>
+            <% columns.forEach(function(h) { %>
+              <th><%= h %></th>
+            <% }); %>
+          <% } else { %>
+            <th>No data</th>
+          <% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (data && data.length > 0 && columns && columns.length > 0) { %>
+          <% data.forEach(function(row) { %>
+            <tr>
+              <% columns.forEach(function(k) { %>
+                <td><%= row[k] %></td>
+              <% }); %>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr><td>No data matching filters</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </body>
+</html>
