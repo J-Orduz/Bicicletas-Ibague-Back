@@ -29,4 +29,16 @@ export class Telemetria {
     this.estadoCandado = estadoCandado;
     this.fechaConsulta = "";
   }
+
+  dto(bikeId) {
+    return {
+      id: this.id,
+      IDbicicleta: bikeId,
+      latitud: this.latitud,
+      longitud: this.longitud,
+      bateria: this.bateria,
+      estadoCandado: this.estadoCandado,
+      fechaConsulta: new Date()
+    };
+  }
 };
