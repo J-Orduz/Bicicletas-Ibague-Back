@@ -103,7 +103,7 @@ export class AuthService {
       // 2. Obtener perfil del usuario para obtener el nombre
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('nombre')
+        .select('nombre, rol')
         .eq('id', data.user.id)
         .single();
 
@@ -126,7 +126,8 @@ export class AuthService {
         user: {
           id: data.user.id,
           email: data.user.email,
-          nombre: profile?.nombre || 'Usuario'
+          nombre: profile?.nombre || 'Usuario',
+          rol: profile.rol
         },
         session: {
           access_token: data.session.access_token,

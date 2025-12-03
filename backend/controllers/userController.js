@@ -148,7 +148,8 @@ export const loginUser = async (req, res) => {
       user: {
         id: result.user.id,
         email: result.user.email,
-        nombre: result.user.nombre
+        nombre: result.user.nombre,
+        rol: result.user.rol
       },
       session: {
         access_token: result.session.access_token,
