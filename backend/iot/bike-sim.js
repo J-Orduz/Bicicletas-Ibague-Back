@@ -15,7 +15,7 @@ const TELEMETRY_PERIOD_MS = 1000 * 20; // intervalo de espera para reporte
 const ABANDON_WAIT_TIME_MINUTES = 80; // tiempo de espera
 
 class Bike {
-  async init(id) {
+  init(id) {
     // se inicializa un cliente separado ya que el proceso es 
     // independiente al servidor
     this.client = mqtt.connect(BROKER_URL);
@@ -23,22 +23,29 @@ class Bike {
     // se obtienen al solicitar la informacion de la bicicleta mediante
     // el cliente
     this.bike = {};
-    this.telemetry = {};
+    this.telemetry = new Telemetria();
     this.initialized = false;
 
-    this.client.on('connect', () => {
+    this.client.on('connect', async () => {
       console.log(`[IOT ${id}] inicializando`);
       this.client.publish(TOPICS.BIKE.init, JSON.stringify({id: id}));
       this.client.subscribe(TOPICS.CLIENT.bikedata);
       this.client.subscribe(TOPICS.CLIENT.viaje);
     });
 
-    this.client.on('message', (topic, message) => {
+    this.client.on('message', async (topic, message) => {
       const data = JSON.parse(message);
       if (data.id !== id) {
         console.log(`[IOT ${id}]: message goes to ${data.id}`);
         return;
       }
+
+      console.log("connected?", this.client.connected);
+      console.log("publishing to hello...");
+      // this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
+      //   bike: this.bike,
+      //   telemetry: this.telemetry,
+      // }));
 
       switch (topic) {
       case TOPICS.CLIENT.bikedata:
@@ -47,9 +54,13 @@ class Bike {
           break;
         }
         console.log(`[IOT ${id}] Initial bike data retrieved from client...`);
-        this.telemetry = data.telemetry;
+        Object.assign(this.telemetry, data.telemetry);
         this.bike = data.bike;
         this.initialized = true;
+        // this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
+        //   bike: this.bike,
+        //   telemetry: this.telemetry,
+        // }));
         this.simulate();
         break;
       case TOPICS.viaje:
@@ -58,6 +69,9 @@ class Bike {
         break;
       }
     });
+
+    // while (!this.client.connected) {}
+    // this.simulate();
   }
 
   async simulate() {
@@ -102,32 +116,29 @@ class Bike {
       }
 
       console.log(`[IOT ${this.bike.id}] reportando telemetria`);
-      this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
+      this.telemetry.id += 1;
+      await this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
         bike: this.bike,
-        telemetry: this.telemetry
+        telemetry: this.telemetry.dto(this.bike.id)
       }));
 
       // si el tiempo transcurrido en la iteracion es menor al intervalo,
       // esperar hasta completar el intervalo
-      wait(1000 * 4);
+      await wait(1000 * 4);
     }
   }
 }
 
-function mod(x,n) {
-  return x - (Math.floor(x/n) * n);
-}
+// function mod(x,n) {
+//   return x - (Math.floor(x/n) * n);
+// }
 
 function wait(ms) {
-  if (ms <= 0) return 0;
-  const start = new Date();
-  var now = new Date();
-  while (now - start < ms) {
-    now = new Date();
-  }
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-var bikes = [new Bike(), new Bike(), new Bike()];
 const ids = ['E0001', 'E0002', 'E0003'];
-for (let i=0; i<3; ++i)
-  bikes[i].init(ids[i]);
+for (let i=0; i<3; ++i) {
+  let bike = new Bike();
+  bike.init(ids[i]);
+}

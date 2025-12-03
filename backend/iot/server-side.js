@@ -33,6 +33,8 @@ export function initMqttClient() {
     // exitosamente al broker
     client.subscribe(TOPICS.BIKE.init);
     client.subscribe(TOPICS.BIKE.telemetria);
+    client.subscribe('hello');
+    client.subscribe('test');
   });
 
   client.on('message', async (topic, buffer) => {
