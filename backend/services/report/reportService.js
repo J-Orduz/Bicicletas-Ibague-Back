@@ -92,10 +92,19 @@ export async function generateXlsxStream(
     while (rows.length < MAX_ROWS_SYNC) {
       const offset = (page - 1) * pageLimit;
       const to = offset + pageLimit - 1;
-      const { data, error } = await supabase
-        .from(tableName)
-        .select("*")
-        .range(offset, to);
+      let query = supabase.from(tableName).select("*");
+      
+      // Aplicar filtros de fecha si existen (para tablas con fechacomienzo)
+      if (filters.dateFrom && (tableName === 'Viaje' || tableName === 'Reserva')) {
+        const dateColumn = tableName === 'Viaje' ? 'fechacomienzo' : 'fechareserva';
+        query = query.gte(dateColumn, filters.dateFrom);
+      }
+      if (filters.dateTo && (tableName === 'Viaje' || tableName === 'Reserva')) {
+        const dateColumn = tableName === 'Viaje' ? 'fechacomienzo' : 'fechareserva';
+        query = query.lte(dateColumn, filters.dateTo);
+      }
+      
+      const { data, error } = await query.range(offset, to);
       if (error) break;
       if (!data || data.length === 0) break;
       rows.push(...data);
@@ -153,7 +162,13 @@ export async function generateXlsxStream(
   let rowIdx = 4;
   for (const r of result.rows) {
     const row = sheet.addRow(
-      result.columns.map((c) => (r[c] !== undefined ? r[c] : ""))
+      result.columns.map((c) => {
+        const val = r[c];
+        if (val === undefined || val === null) return "";
+        // Serializar objetos y arrays a JSON
+        if (typeof val === 'object') return JSON.stringify(val);
+        return val;
+      })
     );
     row.border = {
       top: { style: "thin" },
@@ -203,7 +218,19 @@ export async function generatePdfBuffer(
       reservas: "Reserva",
     };
     const tableName = tableMap[normalizedName] || reportName;
-    const { data } = await supabase.from(tableName).select("*").limit(2000);
+    let query = supabase.from(tableName).select("*");
+    
+    // Aplicar filtros de fecha si existen
+    if (filters.dateFrom && (tableName === 'Viaje' || tableName === 'Reserva')) {
+      const dateColumn = tableName === 'Viaje' ? 'fechacomienzo' : 'fechareserva';
+      query = query.gte(dateColumn, filters.dateFrom);
+    }
+    if (filters.dateTo && (tableName === 'Viaje' || tableName === 'Reserva')) {
+      const dateColumn = tableName === 'Viaje' ? 'fechacomienzo' : 'fechareserva';
+      query = query.lte(dateColumn, filters.dateTo);
+    }
+    
+    const { data } = await query.limit(2000);
     const columns =
       data && data.length > 0 ? Object.keys(data[0]) : ["id", "col1", "col2"];
     result = { columns, rows: data || [] };
@@ -226,7 +253,12 @@ export async function generatePdfBuffer(
   });
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: "networkidle0" });
-  const pdf = await page.pdf({ format: "A4", printBackground: true });
+  const pdf = await page.pdf({ 
+    format: "A4", 
+    landscape: true,
+    printBackground: true,
+    margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" }
+  });
   await browser.close();
   return pdf;
 }
