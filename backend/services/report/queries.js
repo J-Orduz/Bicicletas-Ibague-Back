@@ -44,6 +44,16 @@ async function fetchAllPaged(
 export async function estacionesReport(filters = {}) {
   const table = "Estacion";
   let rows = await fetchAllPaged(table, "*", filters, 1000, 10000);
+  
+  // Serializar objetos JSON en las columnas (especialmente 'posicion')
+  rows = rows.map(row => {
+    const newRow = { ...row };
+    if (newRow.posicion && typeof newRow.posicion === 'object') {
+      newRow.posicion = JSON.stringify(newRow.posicion);
+    }
+    return newRow;
+  });
+  
   const columns =
     rows && rows.length > 0
       ? Object.keys(rows[0])
@@ -53,13 +63,17 @@ export async function estacionesReport(filters = {}) {
 
 export async function usageFrequencyReport(filters = {}) {
   // Aggregate trips by bicicleta (via Reserva)
-  const viajeRows = await fetchAllPaged(
-    "Viaje",
-    "id,idReserva,fechacomienzo,estacionInicio,estacionFin",
-    filters,
-    1000,
-    20000
-  );
+  let query = supabase.from("Viaje").select("id,idReserva,fechacomienzo,estacionInicio,estacionFin");
+  
+  // Aplicar filtros de fecha si existen
+  if (filters.dateFrom) {
+    query = query.gte("fechacomienzo", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte("fechacomienzo", filters.dateTo);
+  }
+  
+  const { data: viajeRows } = await query.limit(20000);
   const reservaCounts = new Map();
   for (const v of viajeRows) {
     const rid = v.idReserva || "unknown";
@@ -99,13 +113,17 @@ export async function usageFrequencyReport(filters = {}) {
 }
 
 export async function stationsDemandReport(filters = {}) {
-  const rows = await fetchAllPaged(
-    "Viaje",
-    "id,estacionInicio,estacionFin",
-    filters,
-    1000,
-    20000
-  );
+  let query = supabase.from("Viaje").select("id,estacionInicio,estacionFin");
+  
+  // Aplicar filtros de fecha si existen
+  if (filters.dateFrom) {
+    query = query.gte("fechacomienzo", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte("fechacomienzo", filters.dateTo);
+  }
+  
+  const { data: rows } = await query.limit(20000);
   const map = new Map();
   for (const r of rows) {
     const o = r.estacionInicio || "unknown";
@@ -122,13 +140,18 @@ export async function stationsDemandReport(filters = {}) {
 export async function bikeDemandByTypeReport(filters = {}) {
   // Map bikes to types and count trips per type (using Reserva -> Bicicleta)
   const bikes = await fetchAllPaged("Bicicleta", "id,tipo", {}, 1000, 20000);
-  const viajeRows = await fetchAllPaged(
-    "Viaje",
-    "id,idReserva",
-    filters,
-    1000,
-    50000
-  );
+  
+  let query = supabase.from("Viaje").select("id,idReserva,fechacomienzo");
+  
+  // Aplicar filtros de fecha si existen
+  if (filters.dateFrom) {
+    query = query.gte("fechacomienzo", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte("fechacomienzo", filters.dateTo);
+  }
+  
+  const { data: viajeRows } = await query.limit(50000);
   const reservaIds = Array.from(
     new Set(viajeRows.map((v) => v.idReserva).filter(Boolean))
   );
@@ -210,13 +233,18 @@ export async function tripsPerDayReport(filters = {}) {
       `[reports] usuario_id=${filters.usuario_id} viajes encontrados=${rows.length}`
     );
   } else {
-    rows = await fetchAllPaged(
-      "Viaje",
-      "id,fechacomienzo,idReserva",
-      viajeFilters,
-      1000,
-      50000
-    );
+    // Aplicar filtros de fecha cuando se consulta directamente
+    let query = supabase.from("Viaje").select("id,fechacomienzo,idReserva");
+    
+    if (filters.dateFrom) {
+      query = query.gte("fechacomienzo", filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      query = query.lte("fechacomienzo", filters.dateTo);
+    }
+    
+    const { data } = await query.limit(50000);
+    rows = data || [];
   }
   // Agrupar por día
   const map = new Map();
@@ -236,17 +264,70 @@ export async function tripsPerDayReport(filters = {}) {
 
 export async function maintenanceReport(filters = {}) {
   // Use Bicicleta table to report status and battery
-  let rows = await fetchAllPaged(
-    "Bicicleta",
-    "id,marca,tipo,estado,idEstacion,bateria",
-    filters,
-    1000,
-    20000
-  );
+  // Filtrar solo bicicletas en estado "Mantenimiento"
+  const { data, error } = await supabase
+    .from("Bicicleta")
+    .select("id,marca,tipo,estado,idEstacion,bateria")
+    .eq("estado", "Mantenimiento");
+  
+  if (error) {
+    console.warn("Error obteniendo bicicletas en mantenimiento", error.message);
+    return { columns: ["id", "marca", "tipo", "estado", "bateria"], rows: [] };
+  }
+  
+  const rows = data || [];
   const columns =
     rows && rows.length > 0
       ? Object.keys(rows[0])
       : ["id", "tipo", "estado", "bateria"];
+  return { columns, rows };
+}
+
+export async function viajesReport(filters = {}) {
+  // Obtener viajes con filtros de fecha
+  let query = supabase.from("Viaje").select("*");
+  
+  // Aplicar filtros de fecha si existen
+  if (filters.dateFrom) {
+    query = query.gte("fechacomienzo", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte("fechacomienzo", filters.dateTo);
+  }
+  
+  const { data, error } = await query.limit(10000);
+  
+  if (error) {
+    console.warn("Error obteniendo viajes", error.message);
+    return { columns: ["id", "fechacomienzo", "idReserva"], rows: [] };
+  }
+  
+  const rows = data || [];
+  const columns = rows && rows.length > 0 ? Object.keys(rows[0]) : ["id", "fechacomienzo", "idReserva"];
+  return { columns, rows };
+}
+
+export async function reservasReport(filters = {}) {
+  // Obtener reservas con filtros de fecha
+  let query = supabase.from("Reserva").select("*");
+  
+  // Aplicar filtros de fecha si existen
+  if (filters.dateFrom) {
+    query = query.gte("fechareserva", filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    query = query.lte("fechareserva", filters.dateTo);
+  }
+  
+  const { data, error } = await query.limit(10000);
+  
+  if (error) {
+    console.warn("Error obteniendo reservas", error.message);
+    return { columns: ["id", "fechareserva", "usuario_id"], rows: [] };
+  }
+  
+  const rows = data || [];
+  const columns = rows && rows.length > 0 ? Object.keys(rows[0]) : ["id", "fechareserva", "usuario_id"];
   return { columns, rows };
 }
 
@@ -259,6 +340,8 @@ export const reportHandlers = {
   bike_demand_by_type: bikeDemandByTypeReport,
   trips_per_day: tripsPerDayReport,
   maintenance: maintenanceReport,
+  viajes: viajesReport,
+  reservas: reservasReport,
 };
 
 export default { reportHandlers };
