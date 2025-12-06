@@ -13,9 +13,11 @@ export const BatteryStatus = {
   DAMAGED: 'Dañada',
 };
 
+const MAX_BATTERY = 100;
+
 export const BatteryLevel = {
-  full: 0xff,
-  low: 0xff / 4,
+  full: 0xff_ff_ff_ff,
+  low: 0xff_ff_ff_ff / 4,
   zero: 0,
 };
 
@@ -41,4 +43,17 @@ export class Telemetria {
       fechaConsulta: new Date()
     };
   }
+};
+
+export class Bike {
+  constructor(id, marca, tipo, estado, idEstacion, numero_serie) {
+    this.id = id;
+    this.marca = marca;
+    this.tipo = tipo;
+    this.estado = estado;
+    this.idEstacion = idEstacion;
+    this.numero_serie = numero_serie;
+  }
+
+  dto() {} // TODO: implementar data transfer object
 };
