@@ -16,7 +16,10 @@
   },
   "homepage": "https://github.com/J-Orduz/Bicicletas-Ibague-Back#readme",
   "scripts": {
-    "mock-server": "node backend/mock/mock-server.js"
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "mock-server": "node backend/mock/mock-server.js",
+    "vercel-build": "echo 'Build successful'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.80.0",
