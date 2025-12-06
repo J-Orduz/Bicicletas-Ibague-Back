@@ -1,42 +1,7 @@
 import { authService } from '../services/auth/index.js';
 import { supabase } from "../shared/supabase/client.js";
-
-// Middleware para extraer usuario del token
-export const extractUserFromToken = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token de autorización requerido'
-      });
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    // Verificar el token con Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token inválido o expirado'
-      });
-    }
-
-    // Agregar usuario a la request
-    req.user = user;
-    next();
-
-  } catch (error) {
-    console.error('❌ Error extrayendo usuario del token:', error);
-    return res.status(401).json({
-      success: false,
-      message: 'Error de autenticación'
-    });
-  }
-};
+// Importar middleware centralizado (Chain of Responsibility)
+import { extractUserFromToken } from '../middleware/auth.js';
 
 export const registerUser = async (req, res) => {
   try {
