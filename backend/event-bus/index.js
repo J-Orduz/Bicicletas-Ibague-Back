@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import dotenv from 'dotenv';
+import { Observer, CallbackObserver } from './Observer.js';
 
 // CARGAR variables de entorno PRIMERO
 dotenv.config();
@@ -35,11 +36,20 @@ class UpstashEventBus {
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
     
-    this.subscribers = new Map(); // { channel: [callbacks] }
+    // Patrón Observer: Gestión de observadores por canal
+    // { channel: Map<observerId, Observer> }
+    this.observers = new Map();
+    
+    // Compatibilidad: Mantener subscribers para código existente
+    // { channel: [callbacks] }
+    this.subscribers = new Map();
+    
+    // Contador para IDs únicos de suscripciones
+    this.subscriptionIdCounter = 0;
     
     // Guardar la instancia
     UpstashEventBus.instance = this;
-    console.log('🚀 Upstash Redis Event-Bus configurado correctamente (Singleton)');
+    console.log('🚀 Upstash Redis Event-Bus configurado correctamente (Singleton + Observer)');
   }
 
   /**
@@ -85,20 +95,175 @@ class UpstashEventBus {
     }
   }
 
-  // Suscribirse a eventos (para servicios en la misma instancia)
-  subscribe(channel, callback) {
-    if (!this.subscribers.has(channel)) {
-      this.subscribers.set(channel, []);
+  /**
+   * Suscribirse a eventos (Patrón Observer)
+   * 
+   * Soporta dos formas:
+   * 1. Con callback (compatibilidad con código existente)
+   * 2. Con Observer (nuevo, patrón Observer formal)
+   * 
+   * @param {string} channel - Canal al que suscribirse
+   * @param {Function|Observer} callbackOrObserver - Callback o instancia de Observer
+   * @param {string} observerId - ID opcional para la suscripción (auto-generado si no se provee)
+   * @returns {string} ID de la suscripción
+   */
+  subscribe(channel, callbackOrObserver, observerId = null) {
+    // Generar ID único si no se provee
+    const subscriptionId = observerId || `sub_${++this.subscriptionIdCounter}_${Date.now()}`;
+    
+    // Inicializar Map de observadores para el canal si no existe
+    if (!this.observers.has(channel)) {
+      this.observers.set(channel, new Map());
     }
-    this.subscribers.get(channel).push(callback);
-    console.log(`✅ Servicio suscrito a: ${channel}`);
+    
+    const channelObservers = this.observers.get(channel);
+    
+    // Determinar si es un Observer o un callback
+    if (callbackOrObserver instanceof Observer) {
+      // Patrón Observer formal
+      channelObservers.set(subscriptionId, callbackOrObserver);
+      console.log(`✅ Observer suscrito a: ${channel} (ID: ${subscriptionId})`);
+    } else if (typeof callbackOrObserver === 'function') {
+      // Compatibilidad: Crear CallbackObserver para mantener compatibilidad
+      const callbackObserver = new CallbackObserver(subscriptionId, callbackOrObserver);
+      channelObservers.set(subscriptionId, callbackObserver);
+      
+      // Mantener compatibilidad con código existente
+      if (!this.subscribers.has(channel)) {
+        this.subscribers.set(channel, []);
+      }
+      this.subscribers.get(channel).push(callbackOrObserver);
+      
+      console.log(`✅ Servicio suscrito a: ${channel} (ID: ${subscriptionId})`);
+    } else {
+      throw new Error('subscribe() requiere un callback function o una instancia de Observer');
+    }
     
     // También obtener eventos históricos
-    this.getHistoricalEvents(channel, callback);
+    const observer = channelObservers.get(subscriptionId);
+    this.getHistoricalEvents(channel, (event) => observer.update(event, channel));
+    
+    return subscriptionId;
   }
 
-  // Notificar a subscribers locales
+  /**
+   * Desuscribirse de eventos (Patrón Observer)
+   * 
+   * @param {string} channel - Canal del que desuscribirse
+   * @param {string} subscriptionId - ID de la suscripción a eliminar
+   * @returns {boolean} true si se eliminó exitosamente, false si no se encontró
+   */
+  unsubscribe(channel, subscriptionId) {
+    if (!this.observers.has(channel)) {
+      console.log(`⚠️ Canal ${channel} no tiene observadores`);
+      return false;
+    }
+    
+    const channelObservers = this.observers.get(channel);
+    
+    if (channelObservers.has(subscriptionId)) {
+      channelObservers.delete(subscriptionId);
+      console.log(`✅ Observer desuscrito de: ${channel} (ID: ${subscriptionId})`);
+      
+      // Si no quedan observadores, limpiar el canal
+      if (channelObservers.size === 0) {
+        this.observers.delete(channel);
+      }
+      
+      return true;
+    }
+    
+    console.log(`⚠️ Suscripción ${subscriptionId} no encontrada en canal ${channel}`);
+    return false;
+  }
+
+  /**
+   * Desuscribir todos los observadores de un canal
+   * 
+   * @param {string} channel - Canal a limpiar
+   * @returns {number} Número de observadores eliminados
+   */
+  unsubscribeAll(channel) {
+    if (!this.observers.has(channel)) {
+      return 0;
+    }
+    
+    const channelObservers = this.observers.get(channel);
+    const count = channelObservers.size;
+    
+    channelObservers.clear();
+    this.observers.delete(channel);
+    this.subscribers.delete(channel);
+    
+    console.log(`✅ ${count} observadores desuscritos de: ${channel}`);
+    return count;
+  }
+
+  /**
+   * Obtener lista de suscripciones de un canal
+   * 
+   * @param {string} channel - Canal a consultar
+   * @returns {Array} Array de IDs de suscripciones
+   */
+  getSubscriptions(channel) {
+    if (!this.observers.has(channel)) {
+      return [];
+    }
+    
+    return Array.from(this.observers.get(channel).keys());
+  }
+
+  /**
+   * Obtener información de todas las suscripciones
+   * 
+   * @returns {Object} Objeto con información de suscripciones por canal
+   */
+  getAllSubscriptions() {
+    const subscriptions = {};
+    
+    for (const [channel, observers] of this.observers.entries()) {
+      subscriptions[channel] = {
+        count: observers.size,
+        observerIds: Array.from(observers.keys())
+      };
+    }
+    
+    return subscriptions;
+  }
+
+  /**
+   * Verificar si hay observadores en un canal
+   * 
+   * @param {string} channel - Canal a verificar
+   * @returns {boolean} true si hay observadores, false si no
+   */
+  hasObservers(channel) {
+    return this.observers.has(channel) && this.observers.get(channel).size > 0;
+  }
+
+  /**
+   * Notificar a observadores (Patrón Observer)
+   * 
+   * Notifica a todos los observadores suscritos al canal
+   * 
+   * @param {string} channel - Canal del evento
+   * @param {Object} event - Evento a notificar
+   */
   notifySubscribers(channel, event) {
+    // Notificar a observadores (Patrón Observer formal)
+    if (this.observers.has(channel)) {
+      const channelObservers = this.observers.get(channel);
+      
+      for (const [observerId, observer] of channelObservers.entries()) {
+        try {
+          observer.update(event, channel);
+        } catch (error) {
+          console.error(`❌ Error en observer ${observerId}:`, error.message);
+        }
+      }
+    }
+    
+    // Compatibilidad: Notificar a callbacks antiguos (si existen)
     const channelSubscribers = this.subscribers.get(channel) || [];
     channelSubscribers.forEach(callback => {
       try {
