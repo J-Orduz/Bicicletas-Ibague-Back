@@ -34,8 +34,44 @@ export const tipoBicicleta = {
   MECANICA: 'Mecanica'
 }
 
+/**
+ * BookingHandler Singleton
+ * Garantiza una única instancia del handler de reservas
+ * Patrón Singleton aplicado
+ */
 class BookingHandler {
-  constructor() { }
+  // Variable estática para almacenar la instancia única
+  static instance = null;
+
+  constructor() {
+    // Si ya existe una instancia, retornarla en lugar de crear una nueva
+    if (BookingHandler.instance) {
+      console.log('⚠️ BookingHandler ya existe, retornando instancia existente (Singleton)');
+      return BookingHandler.instance;
+    }
+
+    // Guardar la instancia
+    BookingHandler.instance = this;
+    console.log('✅ BookingHandler instanciado (Singleton)');
+  }
+
+  /**
+   * Método estático para obtener la instancia única (patrón Singleton)
+   * @returns {BookingHandler} La instancia única del BookingHandler
+   */
+  static getInstance() {
+    if (!BookingHandler.instance) {
+      BookingHandler.instance = new BookingHandler();
+    }
+    return BookingHandler.instance;
+  }
+
+  /**
+   * Método para resetear la instancia (útil para testing)
+   */
+  static resetInstance() {
+    BookingHandler.instance = null;
+  }
 
   // === MÉTODOS DE RESERVA ===
 
@@ -1611,4 +1647,9 @@ class BookingHandler {
   }
 }
 
-export const bookingHandler = new BookingHandler();
+// Exportar la instancia única del BookingHandler (Singleton)
+// Se crea automáticamente al importar este módulo
+export const bookingHandler = BookingHandler.getInstance();
+
+// También exportar la clase para acceso avanzado si es necesario
+export { BookingHandler };

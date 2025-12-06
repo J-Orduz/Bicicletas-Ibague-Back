@@ -35,7 +35,44 @@ export const ESTADO_VIAJE = {
 
 /* ===================== HANDLER ===================== */
 
+/**
+ * TripHandler Singleton
+ * Garantiza una única instancia del handler de viajes
+ * Patrón Singleton aplicado
+ */
 class TripHandler {
+  // Variable estática para almacenar la instancia única
+  static instance = null;
+
+  constructor() {
+    // Si ya existe una instancia, retornarla en lugar de crear una nueva
+    if (TripHandler.instance) {
+      console.log('⚠️ TripHandler ya existe, retornando instancia existente (Singleton)');
+      return TripHandler.instance;
+    }
+
+    // Guardar la instancia
+    TripHandler.instance = this;
+    console.log('✅ TripHandler instanciado (Singleton)');
+  }
+
+  /**
+   * Método estático para obtener la instancia única (patrón Singleton)
+   * @returns {TripHandler} La instancia única del TripHandler
+   */
+  static getInstance() {
+    if (!TripHandler.instance) {
+      TripHandler.instance = new TripHandler();
+    }
+    return TripHandler.instance;
+  }
+
+  /**
+   * Método para resetear la instancia (útil para testing)
+   */
+  static resetInstance() {
+    TripHandler.instance = null;
+  }
 
   async finalizarViaje(tripId) {
 
@@ -464,4 +501,9 @@ class TripHandler {
 
 }
 
-export const tripHandler = new TripHandler();
+// Exportar la instancia única del TripHandler (Singleton)
+// Se crea automáticamente al importar este módulo
+export const tripHandler = TripHandler.getInstance();
+
+// También exportar la clase para acceso avanzado si es necesario
+export { TripHandler };

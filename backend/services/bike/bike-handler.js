@@ -6,8 +6,44 @@ import { BikeStatus } from "./state.js"
 const bikeTable = "Bicicleta";
 const dockTable = "Docks";
 
+/**
+ * BikeHandler Singleton
+ * Garantiza una única instancia del handler de bicicletas
+ * Patrón Singleton aplicado
+ */
 class BikeHandler {
-  constructor() { }
+  // Variable estática para almacenar la instancia única
+  static instance = null;
+
+  constructor() {
+    // Si ya existe una instancia, retornarla en lugar de crear una nueva
+    if (BikeHandler.instance) {
+      console.log('⚠️ BikeHandler ya existe, retornando instancia existente (Singleton)');
+      return BikeHandler.instance;
+    }
+
+    // Guardar la instancia
+    BikeHandler.instance = this;
+    console.log('✅ BikeHandler instanciado (Singleton)');
+  }
+
+  /**
+   * Método estático para obtener la instancia única (patrón Singleton)
+   * @returns {BikeHandler} La instancia única del BikeHandler
+   */
+  static getInstance() {
+    if (!BikeHandler.instance) {
+      BikeHandler.instance = new BikeHandler();
+    }
+    return BikeHandler.instance;
+  }
+
+  /**
+   * Método para resetear la instancia (útil para testing)
+   */
+  static resetInstance() {
+    BikeHandler.instance = null;
+  }
 
   // === CONSULTAS BÁSICAS ===
   async getBikeBySerial(serialNumber) {
@@ -241,4 +277,9 @@ class BikeHandler {
   }
 }
 
-export const bikeHandler = new BikeHandler();
+// Exportar la instancia única del BikeHandler (Singleton)
+// Se crea automáticamente al importar este módulo
+export const bikeHandler = BikeHandler.getInstance();
+
+// También exportar la clase para acceso avanzado si es necesario
+export { BikeHandler };

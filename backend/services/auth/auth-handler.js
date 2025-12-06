@@ -3,7 +3,44 @@ import { eventBus } from '../../event-bus/index.js';
 import { CHANNELS } from '../../event-bus/channels.js';
 import { UsuarioRegistradoEvent, UsuarioLogueadoEvent } from './events-produced.js';
 
+/**
+ * AuthService Singleton
+ * Garantiza una única instancia del servicio de autenticación
+ * Patrón Singleton aplicado
+ */
 export class AuthService {
+  // Variable estática para almacenar la instancia única
+  static instance = null;
+
+  constructor() {
+    // Si ya existe una instancia, retornarla en lugar de crear una nueva
+    if (AuthService.instance) {
+      console.log('⚠️ AuthService ya existe, retornando instancia existente (Singleton)');
+      return AuthService.instance;
+    }
+
+    // Guardar la instancia
+    AuthService.instance = this;
+    console.log('✅ AuthService instanciado (Singleton)');
+  }
+
+  /**
+   * Método estático para obtener la instancia única (patrón Singleton)
+   * @returns {AuthService} La instancia única del AuthService
+   */
+  static getInstance() {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
+  }
+
+  /**
+   * Método para resetear la instancia (útil para testing)
+   */
+  static resetInstance() {
+    AuthService.instance = null;
+  }
   async registerUser(userData) {
     try {
       console.log('📝 Registrando usuario con email y contraseña:', userData.email);
@@ -169,5 +206,7 @@ export class AuthService {
   }
 }
 
-export const authService = new AuthService();
-console.log('📁 Auth-Handler cargado');
+// Exportar la instancia única del AuthService (Singleton)
+// Se crea automáticamente al importar este módulo
+export const authService = AuthService.getInstance();
+console.log('📁 Auth-Handler cargado (Singleton)');

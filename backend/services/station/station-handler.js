@@ -4,8 +4,44 @@ import { CHANNELS } from "../../event-bus/channels.js";
 
 const stationTable = "Estacion";
 
+/**
+ * StationHandler Singleton
+ * Garantiza una única instancia del handler de estaciones
+ * Patrón Singleton aplicado
+ */
 class StationHandler {
-    constructor() { }
+    // Variable estática para almacenar la instancia única
+    static instance = null;
+
+    constructor() {
+        // Si ya existe una instancia, retornarla en lugar de crear una nueva
+        if (StationHandler.instance) {
+            console.log('⚠️ StationHandler ya existe, retornando instancia existente (Singleton)');
+            return StationHandler.instance;
+        }
+
+        // Guardar la instancia
+        StationHandler.instance = this;
+        console.log('✅ StationHandler instanciado (Singleton)');
+    }
+
+    /**
+     * Método estático para obtener la instancia única (patrón Singleton)
+     * @returns {StationHandler} La instancia única del StationHandler
+     */
+    static getInstance() {
+        if (!StationHandler.instance) {
+            StationHandler.instance = new StationHandler();
+        }
+        return StationHandler.instance;
+    }
+
+    /**
+     * Método para resetear la instancia (útil para testing)
+     */
+    static resetInstance() {
+        StationHandler.instance = null;
+    }
 
     async getAllStations() {
         const { data, error } = await supabase
@@ -417,4 +453,9 @@ class StationHandler {
 
 
 }
-export const stationHandler = new StationHandler();
+// Exportar la instancia única del StationHandler (Singleton)
+// Se crea automáticamente al importar este módulo
+export const stationHandler = StationHandler.getInstance();
+
+// También exportar la clase para acceso avanzado si es necesario
+export { StationHandler };

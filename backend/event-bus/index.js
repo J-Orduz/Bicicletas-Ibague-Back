@@ -4,8 +4,22 @@ import dotenv from 'dotenv';
 // CARGAR variables de entorno PRIMERO
 dotenv.config();
 
+/**
+ * EventBus Singleton
+ * Garantiza una única instancia del EventBus en toda la aplicación
+ * Patrón Singleton aplicado
+ */
 class UpstashEventBus {
+  // Variable estática para almacenar la instancia única
+  static instance = null;
+
   constructor() {
+    // Si ya existe una instancia, retornarla en lugar de crear una nueva
+    if (UpstashEventBus.instance) {
+      console.log('⚠️ EventBus ya existe, retornando instancia existente (Singleton)');
+      return UpstashEventBus.instance;
+    }
+
     console.log('🔧 Configurando Redis con:');
     console.log('URL:', process.env.UPSTASH_REDIS_REST_URL ? '✅ Presente' : '❌ Faltante');
     console.log('TOKEN:', process.env.UPSTASH_REDIS_REST_TOKEN ? '✅ Presente' : '❌ Faltante');
@@ -22,7 +36,28 @@ class UpstashEventBus {
     });
     
     this.subscribers = new Map(); // { channel: [callbacks] }
-    console.log('🚀 Upstash Redis Event-Bus configurado correctamente');
+    
+    // Guardar la instancia
+    UpstashEventBus.instance = this;
+    console.log('🚀 Upstash Redis Event-Bus configurado correctamente (Singleton)');
+  }
+
+  /**
+   * Método estático para obtener la instancia única (patrón Singleton)
+   * @returns {UpstashEventBus} La instancia única del EventBus
+   */
+  static getInstance() {
+    if (!UpstashEventBus.instance) {
+      UpstashEventBus.instance = new UpstashEventBus();
+    }
+    return UpstashEventBus.instance;
+  }
+
+  /**
+   * Método para resetear la instancia (útil para testing)
+   */
+  static resetInstance() {
+    UpstashEventBus.instance = null;
   }
 
   // Publicar evento
@@ -108,4 +143,9 @@ class UpstashEventBus {
   }
 }
 
-export const eventBus = new UpstashEventBus();
+// Exportar la instancia única del EventBus (Singleton)
+// Se crea automáticamente al importar este módulo
+export const eventBus = UpstashEventBus.getInstance();
+
+// También exportar la clase para acceso avanzado si es necesario
+export { UpstashEventBus };
