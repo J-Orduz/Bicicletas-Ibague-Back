@@ -326,7 +326,8 @@ export const canjearPuntosDescuento = async (req, res) => {
     const { data: viajeActualizadoo, error: errorActualizarViajee } = await supabase
       .from('Viaje')
       .update({
-        precioTotal: precioOriginal
+        precioTotal: precioOriginal,
+        precioDescuento: nuevoPrecioTotal
       })
       .eq('id', viajeId)
       .select()

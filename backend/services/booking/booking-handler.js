@@ -1254,6 +1254,7 @@ class BookingHandler {
     tiempoExtra,
     impuesto,
     precioTotal,
+    precioDescuento,
     Reserva:Viaje_idReserva_fkey!inner(
       id,
       bicicleta_id,
@@ -1305,6 +1306,7 @@ class BookingHandler {
         duracion: viaje.tiempoViaje,
         distancia: viaje.distanciaRecorrida,
         precio: viaje.precioTotal,
+        precioDescuento: viaje.precioDescuento,
         precioTiempoExtra: viaje.tiempoExtra,
         subtotal: viaje.precioSubtotal,
         impuesto: viaje.impuesto,
