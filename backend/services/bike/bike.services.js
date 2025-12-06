@@ -68,6 +68,31 @@ function getEstacion(id) {
   return null;
 }
 
+async function getViaje(id) {
+  const { data, error } = await supabase
+    .from('Viaje')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw Error(error.message);
+  return data;
+}
+
+async function getViajesEstaciones(bikeId) {
+  const { data, error } = await supabase
+    .from('Viaje')
+    .select(`
+      estacionInicio,
+      estacionFin,
+      Reserva!inner(id)
+    `)
+    .is('fechafin', null)
+    .eq('Reserva.bicicleta_id', bikeId);
+  
+  if (error) throw Error(error.message);
+  return data;
+}
+
 export const bicicletaService = {
   registrarTelemetria,
   listarEstaciones,
@@ -75,4 +100,6 @@ export const bicicletaService = {
   obtenerTelemetriaActual,
   obtenerTelemetriaHistorico,
   getEstacion,
+  getViajesEstaciones,
+  getViaje
 };
