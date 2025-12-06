@@ -2,6 +2,8 @@ import { authService } from '../services/auth/index.js';
 import { supabase } from "../shared/supabase/client.js";
 // Importar middleware centralizado (Chain of Responsibility)
 import { extractUserFromToken } from '../middleware/auth.js';
+// Importar Factory Method para respuestas estandarizadas
+import ResponseFactory from '../factories/ResponseFactory.js';
 
 export const registerUser = async (req, res) => {
   try {
@@ -37,9 +39,8 @@ export const registerUser = async (req, res) => {
     // Llamar al servicio de autenticación
     const result = await authService.registerUser({ email, nombre, password });
     
-    res.status(201).json({
-      success: true,
-      message: 'Usuario registrado exitosamente. Revisa tu email para verificación.',
+    // Usar Factory Method para crear respuesta estandarizada
+    return ResponseFactory.created(res, 'Usuario registrado exitosamente. Revisa tu email para verificación.', {
       user: {
         id: result.id,            
         email: result.email,
@@ -50,32 +51,20 @@ export const registerUser = async (req, res) => {
   } catch (error) {
     console.error('❌ Error en registro:', error);
     
-    // Manejar errores específicos
+    // Manejar errores específicos usando Factory Method
     if (error.message.includes('User already registered')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Este email ya está registrado'
-      });
+      return ResponseFactory.conflict(res, 'Este email ya está registrado');
     }
     
     if (error.message.includes('Invalid email')) {
-      return res.status(400).json({
-        success: false,
-        message: 'El formato del email no es válido'
-      });
+      return ResponseFactory.error(res, 'El formato del email no es válido', 400);
     }
 
     if (error.message.includes('RLS')) {
-      return res.status(500).json({
-        success: false,
-        message: 'Error de configuración. Contacta al administrador.'
-      });
+      return ResponseFactory.serverError(res, 'Error de configuración. Contacta al administrador.');
     }
     
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+    return ResponseFactory.error(res, error.message, 400);
   }
 };
 

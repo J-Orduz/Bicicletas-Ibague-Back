@@ -2,6 +2,7 @@ import { supabase } from "../../shared/supabase/client.js";
 import { eventBus } from "../../event-bus/index.js";
 import { CHANNELS } from "../../event-bus/channels.js";
 import { tripHandler } from "../trip/trip-handler.js";
+import EventFactory from "../../factories/EventFactory.js";
 
 const reservaTable = "Reserva";
 const bikeTable = "Bicicleta";
@@ -220,19 +221,17 @@ class BookingHandler {
         throw new Error(`Error al reservar bicicleta: ${updateError.message}`);
       }
 
-      // 5. Publicar evento de reserva
-      await eventBus.publish(CHANNELS.RESERVAS, {
-        type: "bicicleta_reservada",
-        data: {
-          bikeId: bicicleta.id,
-          usuarioId: usuarioId,
-          numero_serie: bicicleta.numero_serie,
-          reservaId: nuevaReserva.id,
-          timestamp: ahora.toISOString(),
-          expiracion: expiracion.toISOString(),
-          tiempo_reserva: 10
-        }
+      // 5. Publicar evento de reserva usando Factory Method
+      const reservaEvent = EventFactory.createReservaEvent("bicicleta_reservada", {
+        bikeId: bicicleta.id,
+        usuarioId: usuarioId,
+        numero_serie: bicicleta.numero_serie,
+        reservaId: nuevaReserva.id,
+        timestamp: ahora.toISOString(),
+        expiracion: expiracion.toISOString(),
+        tiempo_reserva: 10
       });
+      await eventBus.publish(CHANNELS.RESERVAS, reservaEvent);
 
       console.log(`✅ Bicicleta reservada exitosamente: ${bicicleta.numero_serie}`);
 
