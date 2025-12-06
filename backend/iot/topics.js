@@ -14,5 +14,6 @@
     init: '/init',
     bateria_baja: '/bateria_baja',
     fin_viaje: '/fin_viaje',
+    descargada: '/descargada',
   },
 };

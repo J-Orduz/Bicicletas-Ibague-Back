@@ -41,13 +41,16 @@ export function initMqttClient() {
       switch (event.type) {
       case producedEvents.viaje_iniciado.type:
         let viaje = await bicicletaService.getViaje(event.data.viajeId);
+        let bike = await bikeHandler.getBike(event.data.bikeId);
         let origin = await bicicletaService.getEstacion(viaje.estacionInicio);
         let target = await bicicletaService.getEstacion(viaje.estacionFin);
         console.log(`[MQTT] viaje: ${JSON.stringify(viaje)}`);
         client.publish(TOPICS.CLIENT.viaje,
           JSON.stringify({
             id: event.data.bikeId,
+            bike: bike,
             usuarioId: event.data.usuarioId,
+            viaje: viaje,
             originId: viaje.estacionInicio,
             origin: origin,
             targetId: event.data.estacionFin,
@@ -83,6 +86,18 @@ export function initMqttClient() {
     case TOPICS.BIKE.telemetria:
       bicicletaService.registrarTelemetria(data.telemetry);
       break;
+    case TOPICS.BIKE.fin_viaje:
+      const bufdata = data;
+      await eventBus.publish(CHANNELS.VIAJES, {
+        type: "viaje_finalizado",
+        data: {
+          bikeId: bufdata.bike.id
+          
+        }
+      });
+      break;
+    case TOPICS.BIKE.descargada:
+      console.log(`[MQTT] La bicicleta ${data.bike.id} se encuentra descargada`);
     }
   });
 }
