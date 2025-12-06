@@ -2,7 +2,7 @@ import * as bikeController from "../controllers/bikeController.js"
 import { bicicletaService } from "../services/bike/bike.services.js";
 import { bikeHandler }
   from "../services/bike/bike-handler.js";
-import { BatteryStatus, Telemetria } from "../services/bike/state.js";
+import { BatteryStatus, BatteryLevel, Telemetria } from "../services/bike/state.js";
 
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -22,19 +22,43 @@ async function updateStatus(data) {
 
 import { eventBus } from "../event-bus/index.js";
 import { CHANNELS } from "../event-bus/channels.js";
+import { producedEvents } from "../services/booking/events-produced.js";
 import { TOPICS } from "./topics.js";
 
 export function initMqttClient() {
   console.log("[MQTT] Conectandose al broker mqtt...");
-  client.on('connect', () => {
+  client.on('connect', async () => {
     console.log("[MQTT] Successful connection to the mqtt broker");
 
     // el dispositivo se suscribe a los canales despues de conectarse
     // exitosamente al broker
     client.subscribe(TOPICS.BIKE.init);
     client.subscribe(TOPICS.BIKE.telemetria);
-    client.subscribe('hello');
-    client.subscribe('test');
+    client.subscribe(TOPICS.BIKE.fin_viaje);
+    //await wait(3*1000);
+    eventBus.subscribe(CHANNELS.VIAJES, async event => {
+      console.log(`[MQTT] Handling redis event ${event.type} with data ${JSON.stringify(event.data)}`);
+      switch (event.type) {
+      case producedEvents.viaje_iniciado.type:
+        let viaje = await bicicletaService.getViaje(event.data.viajeId);
+        let origin = await bicicletaService.getEstacion(viaje.estacionInicio);
+        let target = await bicicletaService.getEstacion(viaje.estacionFin);
+        console.log(`[MQTT] viaje: ${JSON.stringify(viaje)}`);
+        client.publish(TOPICS.CLIENT.viaje,
+          JSON.stringify({
+            id: event.data.bikeId,
+            usuarioId: event.data.usuarioId,
+            originId: viaje.estacionInicio,
+            origin: origin,
+            targetId: event.data.estacionFin,
+            target: target,
+          }));
+        break;
+      default:
+        console.log(`[MQTT] Handling for redis event type ${event.type} in channel ${CHANNELS.VIAJES} not implemented.`);
+        break;
+      }
+    });
   });
 
   client.on('message', async (topic, buffer) => {
@@ -43,9 +67,14 @@ export function initMqttClient() {
     switch (topic) {
     case TOPICS.BIKE.init:
       let bike = await bikeHandler.getBike(data.id);
-      //console.log(`[MQTT] Bike id ${bike}`);
+      console.log(`[MQTT] Bike id ${bike.id}`);
       let est = bicicletaService.getEstacion(bike.idEstacion);
-      let bateria = (bike.tipo === 'Electrica')? 0xf : null;
+      if (est === null) {
+        let res = await bicicletaService.getViajesEstaciones(data.id);
+        console.log(`gathered: ${JSON.stringify(res)}`);
+        est = bicicletaService.getEstacion(res[0].estacionInicio);
+      }
+      let bateria = (bike.tipo === 'Electrica')? BatteryLevel.full : null;
       let telem = new Telemetria(est.posicion.longitud,
         est.posicion.latitud, bateria, BatteryStatus.CARGADA);
       client.publish(TOPICS.CLIENT.bikedata,
@@ -56,4 +85,8 @@ export function initMqttClient() {
       break;
     }
   });
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

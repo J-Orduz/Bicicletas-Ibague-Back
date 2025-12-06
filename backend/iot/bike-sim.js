@@ -1,4 +1,4 @@
-import { BikeStatus, BatteryStatus, BatteryLevel, Telemetria }
+import { BikeStatus, BatteryStatus, BatteryLevel, Telemetria, Bike }
   from "../services/bike/state.js";
 import { TOPICS } from "./topics.js";
 
@@ -8,13 +8,15 @@ const mqtt = require('mqtt');
 
 const BROKER_URL = 'mqtt://localhost:1883'; // dirección del servidor
 // que hostea el broker mqtt (eclipse-mosquito)
-const BATTERY_TIME_MS = 1000 * 7; // tiempo de duracion de una linea
+const BATTERY_TIME_MS = 1000 * 12; // tiempo de duracion de un punto
 // de bateria
-const TELEMETRY_PERIOD_MS = 1000 * 20; // intervalo de espera para reporte
+const TELEMETRY_PERIOD_MS = 1000 * 3; // intervalo de espera para reporte
 // de telemetria
 const ABANDON_WAIT_TIME_MINUTES = 80; // tiempo de espera
 
-class Bike {
+const INTERPOLATION_RATE = 1.0/7.0;
+
+class IOTBike {
   init(id) {
     // se inicializa un cliente separado ya que el proceso es 
     // independiente al servidor
@@ -22,12 +24,13 @@ class Bike {
 
     // se obtienen al solicitar la informacion de la bicicleta mediante
     // el cliente
-    this.bike = {};
+    this.bike = new Bike();
     this.telemetry = new Telemetria();
+    this.destino = { longitud: 0, latitud: 0 };
     this.initialized = false;
 
     this.client.on('connect', async () => {
-      console.log(`[IOT ${id}] inicializando`);
+      console.log(`[IOT ${id}] inicializando...`);
       this.client.publish(TOPICS.BIKE.init, JSON.stringify({id: id}));
       this.client.subscribe(TOPICS.CLIENT.bikedata);
       this.client.subscribe(TOPICS.CLIENT.viaje);
@@ -35,17 +38,11 @@ class Bike {
 
     this.client.on('message', async (topic, message) => {
       const data = JSON.parse(message);
-      if (data.id !== id) {
-        console.log(`[IOT ${id}]: message goes to ${data.id}`);
-        return;
-      }
-
-      console.log("connected?", this.client.connected);
-      console.log("publishing to hello...");
-      // this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
-      //   bike: this.bike,
-      //   telemetry: this.telemetry,
-      // }));
+      if (topic === TOPICS.CLIENT.viaje)
+        console.log(`[IOT ${id}] viaje para ${data.id}`);
+      if (data.id === id) {
+        console.log(`[IOT ${id}] recieved message from ${topic}`);
+      } else return;
 
       switch (topic) {
       case TOPICS.CLIENT.bikedata:
@@ -53,45 +50,59 @@ class Bike {
           console.log(`[IOT ${id}] data was already retrieved before...`);
           break;
         }
-        console.log(`[IOT ${id}] Initial bike data retrieved from client...`);
+        console.log(`[IOT ${id}] esperando a inicio de viaje...`);
         Object.assign(this.telemetry, data.telemetry);
-        this.bike = data.bike;
+        Object.assign(this.bike, data.bike);
         this.initialized = true;
-        // this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
-        //   bike: this.bike,
-        //   telemetry: this.telemetry,
-        // }));
-        this.simulate();
         break;
-      case TOPICS.viaje:
+      case TOPICS.CLIENT.viaje:
+        //while (!this.initialized) await wait(10);
         console.log(`[IOT ${id}] Desbloqueando...`);
         this.bike.estado = BikeStatus.EN_USO;
+        this.bike.idEstacion = data.estacionInicio;
+        this.telemetry.longitud = data.origin.posicion.longitud;
+        this.telemetry.latitud = data.origin.posicion.latitud;
+        if (!this.initialized) {
+          console.log(`[IOT ${id}] no ha sido inicializada, esperando...`);
+          await wait(6 * 1000);
+        }
+        this.travel(data.target.id, {
+          long: data.target.posicion.longitud,
+          lat: data.target.posicion.latitud,
+        }).then(() => {
+          console.log(`[IOT ${id}] viaje finalizado`);
+          this.bike.idEstacion = data.targetId;
+        });
         break;
       }
     });
-
-    // while (!this.client.connected) {}
-    // this.simulate();
   }
 
-  async simulate() {
-    var tripStartTime = new Date();
-    var now = tripStartTime;
-    var ellapsed = 0;
-    var delta = 0;
-    var interval = 0;
-    while (true) {
+  async travel(idEstacion, {long, lat}) {
+    console.log(`simulation: ${JSON.stringify([long, lat])}`);
+    let tripStartTime = new Date();
+    let now = tripStartTime;
+    let ellapsed = 0;
+    let delta = 0;
+    //let interval = 0;
+    const startBattery = this.telemetry.bateria;
+    let interpolate = 0.0;
+    let initpos = {long: this.telemetry.longitud,
+      lat: this.telemetry.latitud};
+
+    while (interpolate < 1) {
       delta = (new Date()) - now;
       ellapsed += delta;
-      interval += delta;
+      //interval += delta;
       now = new Date();
 
       if (this.bike.estado !== BikeStatus.EN_USO) {
-        switch (this.bike.estado) {
-        case BikeStatus.BLOQUEADA:
-          tripStartTime = new Date(); // reestabecer tiempo de inicio
-          continue;
-        }
+        // switch (this.bike.estado) {
+        // case BikeStatus.BLOQUEADA:
+        //   // tripStartTime = new Date(); // reestabecer tiempo de inicio
+        //   // continue;
+        // }
+        return Error("not possible to travel when the bike is locked");
       }
       
       // si el tiempo en uso es mayor a ABANDON_WAIT_TIME
@@ -100,33 +111,50 @@ class Bike {
       }
 
       if (this.bike.tipo === 'Electrica') {
-        if (this.telemetry.bateria === BatteryLevel.zero) {
-          // TODO: reporte para bateria descargada
-          break;
+        if (this.telemetry.bateria > BatteryLevel.zero) {
+          this.telemetry.bateria = startBattery
+            - Math.floor(ellapsed/BATTERY_TIME_MS);
+        } else {
+          interpolate -= INTERPOLATION_RATE;
+          // TODO: advertencia de batería descargada
         }
         if (this.telemetry.bateria <= BatteryLevel.low) {
           // TODO: implementar advertencia de bateria baja
         }
 
-        if (interval > BATTERY_TIME_MS) {
-          interval -= BATTERY_TIME_MS;
-          console.log(`[IOT ${this.bike.id}] Bateria disminuida en 1 punto`);
-          this.telemetry.bateria -= 1;
-        }
+        // if (interval > BATTERY_TIME_MS) {
+        //   interval -= BATTERY_TIME_MS;
+        //   console.log(`[IOT ${this.bike.id}] Bateria disminuida en 1 punto`);
+        //   this.telemetry.bateria -= 1;
+        // }
       }
 
-      console.log(`[IOT ${this.bike.id}] reportando telemetria`);
+      this.telemetry.longitud = lerp(initpos.long, long, interpolate);
+      this.telemetry.latitud = lerp(initpos.lat, lat, interpolate);
+      interpolate += INTERPOLATION_RATE;
+
+      console.log(`[IOT ${this.bike.id}] reportando telemetria: ${JSON.stringify(this.telemetry)}`);
       this.telemetry.id += 1;
       await this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
-        bike: this.bike,
+        // bike: this.bike,
         telemetry: this.telemetry.dto(this.bike.id)
       }));
 
       // si el tiempo transcurrido en la iteracion es menor al intervalo,
       // esperar hasta completar el intervalo
-      await wait(1000 * 4);
+      let itertime = new Date() - now;
+      if (itertime < TELEMETRY_PERIOD_MS)
+        await wait(TELEMETRY_PERIOD_MS - itertime);
     }
+
+    this.bike.idEstacion = idEstacion;
+    this.bike.estado = BikeStatus.DISPONIBLE;
+    this.client.publish(TOPICS.BIKE.fin_viaje, JSON.stringify(this.bike));
   }
+}
+
+function lerp(x,y,t) {
+  return x*(1 - t) + y*t;
 }
 
 // function mod(x,n) {
@@ -137,8 +165,8 @@ function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const ids = ['E0001', 'E0002', 'E0003'];
-for (let i=0; i<3; ++i) {
-  let bike = new Bike();
+const ids = ['E0001', 'E0002', 'E0312', 'M0308', 'M0377', 'M0170'];
+for (let i=0; i < ids.length; ++i) {
+  let bike = new IOTBike();
   bike.init(ids[i]);
 }
