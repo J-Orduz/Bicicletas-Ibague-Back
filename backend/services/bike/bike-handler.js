@@ -33,6 +33,8 @@ class BikeHandler {
     if (error) {
       throw new Error(`Error obteniendo bicicleta: ${error.message}`);
     }
+
+    // console.log(`[BikeHandler] ${JSON.stringify(data)}`);
     return data;
   }
 
