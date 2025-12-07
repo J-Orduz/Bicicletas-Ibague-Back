@@ -24,7 +24,7 @@ export const BatteryLevel = {
 export class Telemetria {
   constructor(long, lat, bateria, estadoCandado) {
     // TODO: asegurar que el id generado es único
-    this.id = Math.floor(Math.random() * 0xff), // numero entre 0 y 255
+    this.id = Math.floor(Math.random() * 0xffff), // numero entre 0 y 255
     this.latitud = lat;
     this.longitud = long;
     this.bateria = bateria;
@@ -53,6 +53,7 @@ export class Bike {
     this.estado = estado;
     this.idEstacion = idEstacion;
     this.numero_serie = numero_serie;
+    this.bateria = null;
   }
 
   dto() {} // TODO: implementar data transfer object
