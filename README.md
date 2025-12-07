@@ -12,6 +12,10 @@ Navigate to backend folder and run:
 npm install
 node server.js
 ```
+## Deployment
+1. Run eclipse mosquitto as explained above
+2. Navigate to `backend/iot` and run `node bike-sim.js`
+3. Navigate back to root, then `backend` and run the server with `node server.js`
 ## Core Dependencies
 
 - `express`
