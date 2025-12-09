@@ -170,22 +170,30 @@ function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Función de inicialización para ser llamada desde server.js
+export function initBikeSimulator() {
+  console.log("Inicializando simulador de bicicletas...");
+  const ids = new Array(1000); // 500 E + 500 M
+  let idx = 0;
+  // E0001 → E0500
+  for (let i = 1; i <= 500; i++) {
+    ids[idx++] = `E${String(i).padStart(4, '0')}`;
+  }
+  // M0001 → M0500
+  for (let i = 1; i <= 500; i++) {
+    ids[idx++] = `M${String(i).padStart(4, '0')}`;
+  }
+  console.log('Bicicletas precargadas exitosamente, comenzando simulacion');
 
-
-console.log("Inicializando simulador de bicicletas...");
-const ids = new Array(1000); // 500 E + 500 M
-let idx = 0;
-// E0001 → E0500
-for (let i = 1; i <= 500; i++) {
-  ids[idx++] = `E${String(i).padStart(4, '0')}`;
+  for (let i=0; i < ids.length; ++i) {
+    let bike = new IOTBike();
+    bike.init(ids[i]);
+  }
+  
+  console.log('✅ Simulador de bicicletas iniciado exitosamente');
 }
-// M0001 → M0500
-for (let i = 1; i <= 500; i++) {
-  ids[idx++] = `M${String(i).padStart(4, '0')}`;
-}
-console.log('Bicicletas precargadas exitosamente, comenzando simulacion');
 
-for (let i=0; i < ids.length; ++i) {
-  let bike = new IOTBike();
-  bike.init(ids[i]);
+// Si el archivo se ejecuta directamente (no como módulo importado)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  initBikeSimulator();
 }

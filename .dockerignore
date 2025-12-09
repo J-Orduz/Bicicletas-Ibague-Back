@@ -1,0 +1,52 @@
+# ==================== ARCHIVOS DE CONFIGURACIÓN ====================
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Docker volumes
+backend/iot-mqtt/data/*
+backend/iot-mqtt/log/*
+!backend/iot-mqtt/data/.gitkeep
+!backend/iot-mqtt/log/.gitkeep
+
+# Build files
+dist/
+build/
+*.tgz
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+temp/
+tmp/

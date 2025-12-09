@@ -105,6 +105,7 @@ app.use((req, res, next) => {
 });
 
 import { initMqttClient } from "./iot/server-side.js";
+import { initBikeSimulator } from "./iot/bike-sim.js";
 initMqttClient();
 
 // ==================== 🚀 INICIAR SERVIDOR ====================
@@ -127,6 +128,9 @@ app.listen(PORT, () => {
     );
 
   initializeStationService();
+
+  // Inicializar simulador de bicicletas
+  initBikeSimulator();
 
   //initializeGlobalServices();
 });
