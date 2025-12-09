@@ -6,8 +6,8 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const mqtt = require('mqtt');
 
-const BROKER_URL = 'mqtt://localhost:1883'; // dirección del servidor
-// que hostea el broker mqtt (eclipse-mosquito)
+// Usar variable de entorno o localhost por defecto (para desarrollo local)
+const BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
 const BATTERY_TIME_MS = 1000 * 12; // tiempo de duracion de un punto
 // de bateria
 const TELEMETRY_PERIOD_MS = 1000 * 3; // intervalo de espera para reporte

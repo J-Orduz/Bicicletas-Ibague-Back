@@ -8,9 +8,12 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const mqtt = require('mqtt');
 
-// asume que el servidor broker se ejecuta en el mismo dispositivo que el
-// servidor principal
-const client = mqtt.connect('mqtt://localhost:1883');
+// Usar variable de entorno o localhost por defecto (para desarrollo local)
+const BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
+const client = mqtt.connect(BROKER_URL, {
+  reconnectPeriod: 5000, // Reintentar cada 5 segundos
+  connectTimeout: 30000,  // Timeout de 30 segundos
+});
 
 async function sendTelemetry(data) {
   await bicicletaService.registrarTelemetria(data.telemetry);
@@ -26,7 +29,16 @@ import { producedEvents } from "../services/booking/events-produced.js";
 import { TOPICS } from "./topics.js";
 
 export function initMqttClient() {
-  console.log("[MQTT] Conectandose al broker mqtt...");
+  console.log(`[MQTT] Conectandose al broker mqtt en ${BROKER_URL}...`);
+  
+  client.on('error', (err) => {
+    console.error('[MQTT] Error de conexión:', err.message);
+  });
+  
+  client.on('reconnect', () => {
+    console.log('[MQTT] Intentando reconectar...');
+  });
+  
   client.on('connect', async () => {
     console.log("[MQTT] Successful connection to the mqtt broker");
 
