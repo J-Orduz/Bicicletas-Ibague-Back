@@ -18,8 +18,7 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
-    "mock-server": "node backend/mock/mock-server.js",
-    "vercel-build": "echo 'Build successful'"
+    "mock-server": "node backend/mock/mock-server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.80.0",
