@@ -1,4 +1,4 @@
-import { BikeStatus, BatteryStatus, BatteryLevel, Telemetria, Bike }
+import { BikeStatus, BatteryStatus, BatteryLevel, Telemetria, Bike, LockStatus }
   from "../services/bike/state.js";
 import { TOPICS } from "./topics.js";
 
@@ -152,6 +152,14 @@ class IOTBike {
       if (itertime < TELEMETRY_PERIOD_MS)
         await wait(TELEMETRY_PERIOD_MS - itertime);
     }
+
+    this.telemetry.estadoCandado = LockStatus.BLOQUEADO; // Candado bloqueado al finalizar viaje
+    
+    // Publicar telemetría final con el candado bloqueado
+    this.telemetry.id += 1;
+    await this.client.publish(TOPICS.BIKE.telemetria, JSON.stringify({
+      telemetry: this.telemetry.dto(this.bike.id)
+    }));
 
     this.bike.idEstacion = idEstacion;
     this.bike.estado = BikeStatus.DISPONIBLE;

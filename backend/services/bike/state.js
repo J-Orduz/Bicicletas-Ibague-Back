@@ -13,6 +13,11 @@ export const BatteryStatus = {
   DAMAGED: 'Dañada',
 };
 
+export const LockStatus = {
+  BLOQUEADO: 'Bloqueado',
+  DESBLOQUEADO: 'Desbloqueado',
+};
+
 const MAX_BATTERY = 100;
 
 export const BatteryLevel = {
