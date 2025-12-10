@@ -8,6 +8,13 @@ export const consumedEvents = {
         await tripHandler.finalizarViaje(idTrip);
     },
 
+    viaje_finalizado: async (event) => {
+        //finaliza viaje
+        console.log("Evento viaje_finalizado recibido en trip service");
+        const { idTrip } = event.data;
+        await tripHandler.finalizarViaje(idTrip);
+    },
+
     viaje_iniciado: async (event) => {
         //inicia viaje
         const { viajeId, suscripcion, estacionFin } = event.data

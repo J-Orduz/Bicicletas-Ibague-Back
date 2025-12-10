@@ -69,6 +69,11 @@ export function initMqttClient() {
             target: target,
           }));
         break;
+      // case producedEvents.viaje_finalizado.type:
+      //   console.log(`[MQTT] Viaje finalizado: bikeId=${event.data.bikeId}, idTrip=${event.data.idTrip}`);
+      //   // El evento viaje_finalizado ya fue procesado por el servicio de trips
+      //   // Aquí solo registramos que se completó el ciclo
+      //   break;
       default:
         console.log(`[MQTT] Handling for redis event type ${event.type} in channel ${CHANNELS.VIAJES} not implemented.`);
         break;
@@ -103,8 +108,8 @@ export function initMqttClient() {
       await eventBus.publish(CHANNELS.VIAJES, {
         type: "viaje_finalizado",
         data: {
-          bikeId: bufdata.bike.id
-          
+          bikeId: bufdata.bike.id,
+          idTrip: bufdata.viaje.id
         }
       });
       break;
