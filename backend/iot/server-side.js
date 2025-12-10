@@ -69,11 +69,11 @@ export function initMqttClient() {
             target: target,
           }));
         break;
-      // case producedEvents.viaje_finalizado.type:
-      //   console.log(`[MQTT] Viaje finalizado: bikeId=${event.data.bikeId}, idTrip=${event.data.idTrip}`);
-      //   // El evento viaje_finalizado ya fue procesado por el servicio de trips
-      //   // Aquí solo registramos que se completó el ciclo
-      //   break;
+      case "viaje_finalizado":
+        console.log(`[MQTT] Evento viaje_finalizado recibido desde Redis: ${JSON.stringify(event.data)}`);
+        // El evento ya fue procesado por el servicio de trips (finalizarViaje)
+        // Este log confirma que el ciclo se completó
+        break;
       default:
         console.log(`[MQTT] Handling for redis event type ${event.type} in channel ${CHANNELS.VIAJES} not implemented.`);
         break;
@@ -105,6 +105,40 @@ export function initMqttClient() {
       break;
     case TOPICS.BIKE.fin_viaje:
       const bufdata = data;
+      console.log(`[MQTT] Fin de viaje recibido:`, JSON.stringify(bufdata));
+      
+      // Validar que tenemos los datos necesarios
+      if (!bufdata.bike || !bufdata.bike.id) {
+        console.error('[MQTT] Error: No se recibió información de la bicicleta');
+        break;
+      }
+      
+      if (!bufdata.viaje || !bufdata.viaje.id) {
+        console.error('[MQTT] Error: No se recibió información del viaje');
+        console.log('[MQTT] Buscando viaje activo para la bicicleta:', bufdata.bike.id);
+        
+        // Intentar obtener el viaje activo de la bicicleta
+        try {
+          const viajeActivo = await bicicletaService.getViajeActivoBicicleta(bufdata.bike.id);
+          if (viajeActivo && viajeActivo.id) {
+            console.log(`[MQTT] Viaje encontrado: ${viajeActivo.id}`);
+            await eventBus.publish(CHANNELS.VIAJES, {
+              type: "viaje_finalizado",
+              data: {
+                bikeId: bufdata.bike.id,
+                idTrip: viajeActivo.id
+              }
+            });
+          } else {
+            console.error('[MQTT] No se encontró viaje activo para la bicicleta');
+          }
+        } catch (error) {
+          console.error('[MQTT] Error buscando viaje activo:', error.message);
+        }
+        break;
+      }
+      
+      console.log(`[MQTT] Procesando fin de viaje: bikeId=${bufdata.bike.id}, viajeId=${bufdata.viaje.id}`);
       await eventBus.publish(CHANNELS.VIAJES, {
         type: "viaje_finalizado",
         data: {

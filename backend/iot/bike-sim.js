@@ -74,7 +74,7 @@ class IOTBike {
         this.travel(data.target.id, {
           long: data.target.posicion.longitud,
           lat: data.target.posicion.latitud,
-        }).then(() => {
+        }, data.viaje).then(() => {
           console.log(`[IOT ${id}] viaje finalizado`);
           this.bike.idEstacion = data.targetId;
         });

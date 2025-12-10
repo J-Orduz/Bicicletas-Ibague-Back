@@ -25,7 +25,7 @@ const listarBicicletasPorEstacion = async (idEstacion) => {
 async function registrarTelemetria(telemetria) {
   const { _, error } = await supabase
     .from("Telemetria")
-    .insert(telemetria);
+    .upsert(telemetria, { onConflict: 'id' });
   if (error) throw Error(error.message);
 }
 
@@ -93,6 +93,26 @@ async function getViajesEstaciones(bikeId) {
   return data;
 }
 
+async function getViajeActivoBicicleta(bikeId) {
+  const { data, error } = await supabase
+    .from('Viaje')
+    .select(`
+      *,
+      Reserva!inner(bicicleta_id)
+    `)
+    .eq('Reserva.bicicleta_id', bikeId)
+    .eq('estado_viaje', 'iniciado')
+    .order('fechacomienzo', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error obteniendo viaje activo:', error);
+    throw Error(error.message);
+  }
+  return data;
+}
+
 export const bicicletaService = {
   registrarTelemetria,
   listarEstaciones,
@@ -101,5 +121,6 @@ export const bicicletaService = {
   obtenerTelemetriaHistorico,
   getEstacion,
   getViajesEstaciones,
-  getViaje
+  getViaje,
+  getViajeActivoBicicleta
 };

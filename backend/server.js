@@ -127,6 +127,15 @@ app.listen(PORT, () => {
       console.warn("No se pudo inicializar payment service", err)
     );
 
+  // Inicializar el servicio de trips
+  import("./services/trip/index.js")
+    .then((module) => {
+      if (module.initTripService) module.initTripService();
+    })
+    .catch((err) =>
+      console.warn("No se pudo inicializar trip service", err)
+    );
+
   initializeStationService();
 
   // Inicializar simulador de bicicletas

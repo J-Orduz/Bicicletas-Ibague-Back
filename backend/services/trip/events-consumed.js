@@ -10,9 +10,17 @@ export const consumedEvents = {
 
     viaje_finalizado: async (event) => {
         //finaliza viaje
-        console.log("Evento viaje_finalizado recibido en trip service");
+        console.log("[TRIP-SERVICE] Evento viaje_finalizado recibido en trip service");
         const { idTrip } = event.data;
-        await tripHandler.finalizarViaje(idTrip);
+        console.log(`[TRIP-SERVICE] Procesando viaje_finalizado para tripId: ${idTrip}`);
+        try {
+            const resultado = await tripHandler.finalizarViaje(idTrip);
+            console.log(`[TRIP-SERVICE] Viaje ${idTrip} finalizado exitosamente`);
+            return resultado;
+        } catch (error) {
+            console.error(`[TRIP-SERVICE] Error finalizando viaje ${idTrip}:`, error.message);
+            throw error;
+        }
     },
 
     viaje_iniciado: async (event) => {

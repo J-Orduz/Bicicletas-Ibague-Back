@@ -284,7 +284,7 @@ class TripHandler {
     // Verificar el tipo de viaje
     const tipoViaje = this.verificarTipoViaje(viaje.estacionInicio.tipoEstacion, viaje.estacionFin.tipoEstacion);
 
-    if (tipoViaje === estadoPago.ERROR) {
+    if (tipoViaje === tipoRecorrido.ERROR) {
       return "Tipo de viaje no válido, intente nuevamente más tarde";
     }
 
@@ -306,22 +306,22 @@ class TripHandler {
 
   verificarSuscripcion(suscripcion) {
 
-    if (!suscripcion) return estadoPago.PENDIENTE;
+    if (!suscripcion) return ESTADO_PAGO.PENDIENTE;
 
     const { estado, viajes_disponibles } = suscripcion;
 
     // Suscripción activa con viajes disponibles
     if (estado === 'activo' && viajes_disponibles > 0) {
-      return estadoPago.SUSCRITO;
+      return ESTADO_PAGO.SUSCRITO;
     }
 
     // Suscripción activa sin viajes disponibles
     if (estado === 'activo' && viajes_disponibles === 0) {
-      return estadoPago.PENDIENTE;
+      return ESTADO_PAGO.PENDIENTE;
     }
 
     // Suscripción no activa
-    return estadoPago.PENDIENTE;
+    return ESTADO_PAGO.PENDIENTE;
   }
 
 
